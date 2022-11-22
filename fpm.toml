@@ -1,0 +1,17 @@
+name = "slbm_2d"
+version = "0.1.0"
+license = "mit"
+author = "Will Dickson"
+maintainer = "wbd@caltech.edu"
+copyright = "Copyright 2022, Will Dickson"
+
+[build]
+auto-executables = true
+auto-tests = true
+auto-examples = true
+
+[install]
+library = false
+
+[dependencies]
+toml-f.git = "https://github.com/toml-f/toml-f.git"

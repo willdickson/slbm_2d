@@ -1,0 +1,32 @@
+[mesh]
+ds = 0.01          # mesh spacing
+num_x = 101        # number of x grid points
+num_y = 101        # number of y grid points
+
+[fluid]
+kvisc   = 1.0e-4   # kinematic viscosity 
+density = 1.0      # reference density  
+
+[stop]       
+cond  = "time"      # termination critera
+time  = 10.0        # simulation stop time
+etol  = 1.0e-5      # error tolerance for steady state  (optional)
+
+# Set rectangular domain boundary conditions
+# options: inflow, outflow, noslip, slip
+
+[left-boundary]
+type = 'inflow'
+velocity = 0.1
+
+[right-boundary]
+type = 'outflow'
+
+[top-boundary]
+type = 'noslip'
+
+[bottom-boundary]
+type = 'noslip'
+
+
+
