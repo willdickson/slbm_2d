@@ -3,12 +3,20 @@ module slbm_2d_config
     use, intrinsic :: ieee_arithmetic, only : ieee_is_nan
     use, intrinsic :: ieee_arithmetic, only : ieee_value 
     use slbm_2d_kinds, only : wp, ip
+    use slbm_2d_const, only : NUM_BNDRY
+    use slbm_2d_const, only : BNDRY_NAMES
     use slbm_2d_const, only : STOP_COND_TIME
     use slbm_2d_const, only : STOP_COND_STEADY
     use slbm_2d_const, only : STOP_COND_UNKNOWN
+    use slbm_2d_const, only : BNDRY_COND_INFLOW
+    use slbm_2d_const, only : BNDRY_COND_OUTFLOW
+    use slbm_2d_const, only : BNDRY_COND_NOSLIP
+    use slbm_2d_const, only : BNDRY_COND_SLIP
+    use slbm_2d_const, only : BNDRY_COND_UNKNOWN
     use slbm_2d_const, only : CS
     use slbm_2d_const, only : CS2
     use slbm_2d_bndry, only : bndry_t
+    use slbm_2d_bndry, only : bndry_ptr_t
     use tomlf, only : toml_table
     use tomlf, only : toml_error
     use tomlf, only : toml_parse
@@ -284,10 +292,13 @@ contains
 
 
     subroutine read_bndry_table(config, table)
-        type(config_t), intent(inout)          :: config
+        type(config_t), target, intent(inout)  :: config
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: bndry_table
+        type(toml_table), pointer              :: side_table
+        type(bndry_ptr_t)                      :: bndry_array(NUM_BNDRY)
         integer(ip)                            :: stat
+        integer(ip)                            :: i
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
@@ -297,17 +308,40 @@ contains
             stop
         endif
 
-        block
-            type(toml_table), pointer  :: left_table
-            call get_value(bndry_table, "left", left_table, .false.)
-            if (.not. associated(bndry_table) ) then
-                print *, "config .toml missing boundary.left section"
+        bndry_array(1) % ptr => config % bndry_left
+        bndry_array(2) % ptr => config % bndry_right
+        bndry_array(3) % ptr => config % bndry_top
+        bndry_array(4) % ptr => config % bndry_bottom
+
+        do i=1,NUM_BNDRY
+            call get_value(bndry_table, BNDRY_NAMES(i), side_table, .false.)
+            if (.not. associated(side_table) ) then
+                print *, "config .toml missing boundary."// BNDRY_NAMES(i) 
                 stop
             endif
-        end block
+
+            block
+                character(:), allocatable :: type_name
+                integer(ip)               :: type_id
+                call get_value(side_table, "type", type_name, type_name, stat)
+                if ( .not. allocated(type_name) ) then
+                    print *, "config .toml boundry." // BNDRY_NAMES(i) & 
+                          // " is missing type"
+                    stop
+                end if
+                type_id = bndry_type_from_string(type_name)
+                if (type_id == BNDRY_COND_UNKNOWN) then
+                    print *, "config .toml boundry."// BNDRY_NAMES(i) & 
+                          // " type unknown condition"
+                    print *, "type = ", type_name
+                    stop
+                end if
+            end block
+        end do
+
+
 
     end subroutine read_bndry_table
-
 
     function stop_cond_from_string(stop_cond_string) result(cstop)
         character(*), intent(in) :: stop_cond_string
@@ -335,6 +369,40 @@ contains
             stop_cond_string = "unknown"
         end select
     end function stop_cond_to_string
+
+    function bndry_type_from_string(type_string) result(type_id)
+        character(*), intent(in) :: type_string
+        integer(ip)              :: type_id
+        select case(type_string)
+        case ("inflow")
+            type_id = BNDRY_COND_INFLOW
+        case ("outflow")
+            type_id = BNDRY_COND_OUTFLOW
+        case ("noslip")
+            type_id = BNDRY_COND_NOSLIP
+        case ("slip")
+            type_id = BNDRY_COND_SLIP
+        case default
+            type_id = BNDRY_COND_UNKNOWN
+        end select
+    end function bndry_type_from_string
+
+    function bndry_type_to_string(type_id) result(type_string)
+        integer(ip), intent(in)   :: type_id
+        character(:), allocatable :: type_string
+        select case(type_id)
+        case (BNDRY_COND_INFLOW)
+            type_string = "inflow"
+        case (BNDRY_COND_OUTFLOW)
+            type_string = "outflow"
+        case (BNDRY_COND_NOSLIP)
+            type_string = "noslip"
+        case (BNDRY_COND_SLIP)
+            type_string = "slip"
+        case default
+            type_string = "unknown"
+        end select
+    end function bndry_type_to_string
 
 
 end module slbm_2d_config

@@ -10,6 +10,10 @@ module slbm_2d_bndry
         type(vector_t) :: velocity
     end type bndry_t
 
+    type, public :: bndry_ptr_t
+        type(bndry_t), pointer :: ptr 
+    end type bndry_ptr_t
+
     interface bndry_t
         procedure bndry_constructor
     end interface bndry_t
