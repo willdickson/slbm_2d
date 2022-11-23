@@ -9,6 +9,7 @@ module slbm_2d_config
     use slbm_2d_const, only : STOP_COND_STEADY
     use slbm_2d_const, only : STOP_COND_UNKNOWN
     use slbm_2d_const, only : BNDRY_COND_INFLOW
+    use slbm_2d_const, only : BNDRY_COND_MOVING
     use slbm_2d_const, only : BNDRY_COND_OUTFLOW
     use slbm_2d_const, only : BNDRY_COND_NOSLIP
     use slbm_2d_const, only : BNDRY_COND_SLIP
@@ -17,6 +18,7 @@ module slbm_2d_config
     use slbm_2d_const, only : CS2
     use slbm_2d_bndry, only : bndry_t
     use slbm_2d_bndry, only : bndry_ptr_t
+    use slbm_2d_vector, only : vector_t
     use tomlf, only : toml_table
     use tomlf, only : toml_error
     use tomlf, only : toml_parse
@@ -100,8 +102,9 @@ contains
         !Read values from  sub-tables
         call read_mesh_table(config, table_ptr)
         call read_fluid_table(config, table_ptr)
-        call read_stop_table(config, table_ptr)
+        call read_init_table(config, table_ptr)
         call read_bndry_table(config, table_ptr)
+        call read_stop_table(config, table_ptr)
 
     end function config_from_toml
 
@@ -244,6 +247,23 @@ contains
     end subroutine read_fluid_table
 
 
+    subroutine read_init_table(config, table)
+        type(config_t), intent(inout)          :: config
+        type(toml_table), pointer, intent(in)  :: table
+        type(toml_table), pointer              :: init_table
+        integer(ip)                            :: stat
+        real(wp)                               :: nan
+        nan = ieee_value(nan, ieee_quiet_nan)
+
+        call get_value(table, "init", init_table, .false.)
+        if (.not. associated(init_table) ) then
+            print *, "config .toml missing init section"
+            stop
+        endif
+
+    end subroutine read_init_table
+
+
     subroutine read_stop_table(config, table)
         type(config_t), intent(inout)          :: config
         type(toml_table), pointer, intent(in)  :: table
@@ -297,14 +317,17 @@ contains
         type(toml_table), pointer              :: bndry_table
         type(toml_table), pointer              :: side_table
         type(bndry_ptr_t)                      :: bndry_array(NUM_BNDRY)
+        character(:), allocatable              :: type_name
+        integer(ip)                            :: type_id
         integer(ip)                            :: stat
         integer(ip)                            :: i
         real(wp)                               :: nan
+        real(wp)                               :: val 
         nan = ieee_value(nan, ieee_quiet_nan)
 
-        call get_value(table, "boundary", bndry_table, .false.)
+        call get_value(table, "bndry", bndry_table, .false.)
         if (.not. associated(bndry_table) ) then
-            print *, "config .toml missing boundary section"
+            print *, "config .toml missing bndry section"
             stop
         endif
 
@@ -316,30 +339,53 @@ contains
         do i=1,NUM_BNDRY
             call get_value(bndry_table, BNDRY_NAMES(i), side_table, .false.)
             if (.not. associated(side_table) ) then
-                print *, "config .toml missing boundary."// BNDRY_NAMES(i) 
+                print *, "config .toml is missing boundary." & 
+                    // trim(BNDRY_NAMES(i))
                 stop
             endif
 
+            call get_value(side_table, "type", type_name, type_name, stat)
+            if ( .not. allocated(type_name) ) then
+                print *, "config .toml boundry."//trim(BNDRY_NAMES(i))& 
+                    // "type missing"
+                stop
+            end if
+            type_id = bndry_type_from_string(type_name)
+            if (type_id == BNDRY_COND_UNKNOWN) then
+                print *, "config .toml boundry."//trim(BNDRY_NAMES(i))& 
+                    // " type unknown condition"
+                print *, "type = ", type_name
+                stop
+            end if
+            bndry_array(i) % ptr % type_id = type_id
+
+            select case (type_id)
+            case (BNDRY_COND_INFLOW, BNDRY_COND_MOVING)
+                val = nan
+                call get_value(side_table, "value", val, nan, stat) 
+                if ( (stat < 0) .or. (ieee_is_nan(val)) ) then
+                    print *, "config .toml boundary."//trim(BNDRY_NAMES(i))& 
+                        // " is missing "//type_name//" value or is not a real"
+                    print *, "value = ", val 
+                    stop
+                end if
+            case default
+                val = 0.0_wp
+            end select 
+
+            if ((type_id == BNDRY_COND_INFLOW) .and. (val < 0.0_wp)) then
+                print *, "config .toml boundary."//trim(BNDRY_NAMES(i))&
+                    // " value is < 0"
+                stop
+            end if
+
+            ! Set boundary velocity values
             block
-                character(:), allocatable :: type_name
-                integer(ip)               :: type_id
-                call get_value(side_table, "type", type_name, type_name, stat)
-                if ( .not. allocated(type_name) ) then
-                    print *, "config .toml boundry." // BNDRY_NAMES(i) & 
-                          // " is missing type"
-                    stop
-                end if
-                type_id = bndry_type_from_string(type_name)
-                if (type_id == BNDRY_COND_UNKNOWN) then
-                    print *, "config .toml boundry."// BNDRY_NAMES(i) & 
-                          // " type unknown condition"
-                    print *, "type = ", type_name
-                    stop
-                end if
+                type(vector_t) :: v
+                v = get_bndry_velocity(BNDRY_NAMES(i), type_id, val)
+                bndry_array(i) % ptr % velocity = v 
             end block
         end do
-
-
 
     end subroutine read_bndry_table
 
@@ -376,6 +422,8 @@ contains
         select case(type_string)
         case ("inflow")
             type_id = BNDRY_COND_INFLOW
+        case ("moving")
+            type_id = BNDRY_COND_MOVING
         case ("outflow")
             type_id = BNDRY_COND_OUTFLOW
         case ("noslip")
@@ -393,6 +441,8 @@ contains
         select case(type_id)
         case (BNDRY_COND_INFLOW)
             type_string = "inflow"
+        case (BNDRY_COND_MOVING)
+            type_string = "moving"
         case (BNDRY_COND_OUTFLOW)
             type_string = "outflow"
         case (BNDRY_COND_NOSLIP)
@@ -403,6 +453,40 @@ contains
             type_string = "unknown"
         end select
     end function bndry_type_to_string
+
+    function get_bndry_velocity(bndry_name, type_id, val) result(velocity)
+        character(*), intent(in) :: bndry_name
+        integer(ip), intent(in)  :: type_id
+        real(wp), intent(in)     :: val
+        type(vector_t)           :: velocity 
+        velocity = vector_t(0.0_wp, 0.0_wp)
+        select case (type_id)
+        case (BNDRY_COND_INFLOW)
+            select case(bndry_name)
+            case ("left")
+                velocity % x = abs(val)
+                velocity % y = 0.0_wp
+            case ("right")
+                velocity % x = -abs(val)
+                velocity % y = 0.0_wp
+            case ("top")
+                velocity % x = 0.0_wp 
+                velocity % y = -abs(val)
+            case ("bottom")
+                velocity % x = 0.0_wp  
+                velocity % y = abs(val)
+            end select
+        case (BNDRY_COND_MOVING)
+            select case(bndry_name)
+            case ("left", "right")
+                velocity % x = 0.0_wp 
+                velocity % y = val 
+            case ("top", "bottom")
+                velocity % x = val 
+                velocity % y = 0.0_wp 
+            end select
+        end select
+    end function get_bndry_velocity
 
 
 end module slbm_2d_config

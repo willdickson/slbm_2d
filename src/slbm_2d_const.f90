@@ -18,6 +18,7 @@ module slbm_2d_const
 
     ! Boundary condition ids       
     public :: BNDRY_COND_INFLOW    ! Inflow boundary condition
+    public :: BNDRY_COND_MOVING    ! Moving wall boundary condition
     public :: BNDRY_COND_OUTFLOW   ! Outflow boundary condition
     public :: BNDRY_COND_NOSLIP    ! No slip boundary condition
     public :: BNDRY_COND_SLIP      ! Slip boundary condition
@@ -46,10 +47,11 @@ module slbm_2d_const
 
     ! Boundary condition ids
     integer(ip), parameter :: BNDRY_COND_INFLOW   = 1
-    integer(ip), parameter :: BNDRY_COND_OUTFLOW  = 2
-    integer(ip), parameter :: BNDRY_COND_NOSLIP   = 3
-    integer(ip), parameter :: BNDRY_COND_SLIP     = 4
-    integer(ip), parameter :: BNDRY_COND_UNKNOWN  = 5
+    integer(ip), parameter :: BNDRY_COND_MOVING   = 2
+    integer(ip), parameter :: BNDRY_COND_OUTFLOW  = 3
+    integer(ip), parameter :: BNDRY_COND_NOSLIP   = 4
+    integer(ip), parameter :: BNDRY_COND_SLIP     = 5
+    integer(ip), parameter :: BNDRY_COND_UNKNOWN  = 6
 
     ! Latice constants
     real(wp),    parameter :: CS  = 1.0_wp/sqrt(3.0_wp)
