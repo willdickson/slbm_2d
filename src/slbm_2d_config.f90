@@ -8,12 +8,14 @@ module slbm_2d_config
     use slbm_2d_const, only : STOP_COND_UNKNOWN
     use slbm_2d_const, only : CS
     use slbm_2d_const, only : CS2
+    use slbm_2d_bndry, only : bndry_t
     use tomlf, only : toml_table
     use tomlf, only : toml_error
     use tomlf, only : toml_parse
     use tomlf, only : get_value
     implicit none
     private
+
 
     type, public :: config_t
         ! Input configuration parameters
@@ -23,8 +25,14 @@ module slbm_2d_config
         real(wp)    :: kvisc      = 0.0_wp ! kinematic viscosity 
         real(wp)    :: density    = 0.0_wp ! reference density
         real(wp)    :: stop_time  = 0.0_wp ! simulation stop time
-        integer(ip) :: stop_cond  = STOP_COND_TIME 
         real(wp)    :: stop_etol  = 0.0_wp ! simulation (steady) stop err tol.
+        integer(ip) :: stop_cond  = STOP_COND_TIME 
+
+        ! Boundary condition parameters
+        type(bndry_t) :: bndry_left
+        type(bndry_t) :: bndry_right
+        type(bndry_t) :: bndry_top
+        type(bndry_t) :: bndry_bottom
 
         ! Derived configuration parameters
         integer(ip) :: nstep   = 0_ip   ! number of time steps
@@ -85,7 +93,7 @@ contains
         call read_mesh_table(config, table_ptr)
         call read_fluid_table(config, table_ptr)
         call read_stop_table(config, table_ptr)
-        ! Read values from boundary
+        call read_bndry_table(config, table_ptr)
 
     end function config_from_toml
 
@@ -120,6 +128,7 @@ contains
         config % tau = 0.5_wp + kvisc / (CS2 * config % dt)
     end function config_constructor
 
+
     ! config_t type bound procedures
     ! -------------------------------------------------------------------------
 
@@ -148,6 +157,7 @@ contains
         print *, ''
     end subroutine config_pprint
 
+
     ! utiliy functions & subroutines
     ! -------------------------------------------------------------------------
 
@@ -156,7 +166,6 @@ contains
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: mesh_table
         integer(ip)                            :: stat
-        integer(ip)                            :: origin
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
@@ -192,12 +201,12 @@ contains
         end if
     end subroutine read_mesh_table
 
+
     subroutine read_fluid_table(config, table)
         type(config_t), intent(inout)          :: config
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: fluid_table
         integer(ip)                            :: stat
-        integer(ip)                            :: origin
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
@@ -226,13 +235,13 @@ contains
         config % density = abs(config % density)
     end subroutine read_fluid_table
 
+
     subroutine read_stop_table(config, table)
         type(config_t), intent(inout)          :: config
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: stop_table
         character(:), allocatable              :: cond
         integer(ip)                            :: stat
-        integer(ip)                            :: origin
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
@@ -271,8 +280,34 @@ contains
             stop
         end if
         config % stop_etol = abs(config % stop_etol)
-
     end subroutine read_stop_table
+
+
+    subroutine read_bndry_table(config, table)
+        type(config_t), intent(inout)          :: config
+        type(toml_table), pointer, intent(in)  :: table
+        type(toml_table), pointer              :: bndry_table
+        integer(ip)                            :: stat
+        real(wp)                               :: nan
+        nan = ieee_value(nan, ieee_quiet_nan)
+
+        call get_value(table, "boundary", bndry_table, .false.)
+        if (.not. associated(bndry_table) ) then
+            print *, "config .toml missing boundary section"
+            stop
+        endif
+
+        block
+            type(toml_table), pointer  :: left_table
+            call get_value(bndry_table, "left", left_table, .false.)
+            if (.not. associated(bndry_table) ) then
+                print *, "config .toml missing boundary.left section"
+                stop
+            endif
+        end block
+
+    end subroutine read_bndry_table
+
 
     function stop_cond_from_string(stop_cond_string) result(cstop)
         character(*), intent(in) :: stop_cond_string
@@ -287,6 +322,7 @@ contains
         end select
     end function stop_cond_from_string
 
+
     function stop_cond_to_string(cstop) result(stop_cond_string)
         integer(ip), intent(in)   :: cstop
         character(:), allocatable :: stop_cond_string
@@ -299,5 +335,6 @@ contains
             stop_cond_string = "unknown"
         end select
     end function stop_cond_to_string
+
 
 end module slbm_2d_config

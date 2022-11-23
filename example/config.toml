@@ -15,17 +15,17 @@ etol  = 1.0e-5      # error tolerance for steady state  (optional)
 # Set rectangular domain boundary conditions
 # options: inflow, outflow, noslip, slip
 
-[left-boundary]
+[boundary.left]
 type = 'inflow'
 velocity = 0.1
 
-[right-boundary]
+[boundary.right]
 type = 'outflow'
 
-[top-boundary]
+[boundary.top]
 type = 'noslip'
 
-[bottom-boundary]
+[boundary.bottom]
 type = 'noslip'
 
 
