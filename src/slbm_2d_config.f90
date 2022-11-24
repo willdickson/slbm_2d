@@ -1,4 +1,5 @@
 module slbm_2d_config
+
     use, intrinsic :: ieee_arithmetic, only : ieee_quiet_nan
     use, intrinsic :: ieee_arithmetic, only : ieee_is_nan
     use, intrinsic :: ieee_arithmetic, only : ieee_value 
@@ -28,9 +29,9 @@ module slbm_2d_config
     use tomlf, only : toml_error
     use tomlf, only : toml_parse
     use tomlf, only : get_value
+
     implicit none
     private
-
 
     type, public :: config_t
 
@@ -120,30 +121,53 @@ contains
         call read_bndry_table(config, table_ptr)
         call read_stop_table(config, table_ptr)
 
+        ! Set derivied values
+        config % dt = config % ds 
+        config % nstep = nint(config % stop_time / (config % dt))
+        config % len_x = (config % num_x - 1.0_wp) * config % ds 
+        config % len_y = (config % num_y - 1.0_wp) * config % ds
+        config % tau = 0.5_wp + (config % kvisc) / (CS2 * config % dt)
+
     end function config_from_toml
 
     function config_constructor( &
-            num_x,       &  ! number of z grid points
-            num_y,       &  ! number of y grid points
-            ds,          &  ! mesh step size
-            kvisc,       &  ! kinematic viscosity
-            density,     &  ! reference density
-            stop_time    &  ! simulation stop time  
+            num_x,        &  ! number of z grid points
+            num_y,        &  ! number of y grid points
+            ds,           &  ! mesh step size
+            kvisc,        &  ! kinematic viscosity
+            density,      &  ! reference density
+            stop_time,    &  ! simulation stop time  
+            stop_etol,    &  ! error tolerance for steady stop
+            stop_cond,    &  ! stop condition id
+            bndry_left,   &  ! left boundary condition  (optional)
+            bndry_right,  &  ! right boundary condition (optional)
+            bndry_top,    &  ! top boundary condition   (optional)
+            bndry_bottom, &  ! bottom boundary contiion (optional)
+            init          &  ! initial conditions
             ) result(config)
-        integer(ip), intent(in) :: num_x
-        integer(ip), intent(in) :: num_y
-        real(wp), intent(in)    :: ds
-        real(wp), intent(in)    :: kvisc
-        real(wp), intent(in)    :: density
-        real(wp), intent(in)    :: stop_time
-        type(config_t)          :: config
+        integer(ip),   intent(in)                    :: num_x
+        integer(ip),   intent(in)                    :: num_y
+        real(wp),      intent(in)                    :: ds
+        real(wp),      intent(in)                    :: kvisc
+        real(wp),      intent(in), optional          :: density
+        real(wp),      intent(in), optional          :: stop_time
+        real(wp),      intent(in), optional          :: stop_etol
+        integer(ip),   intent(in), optional          :: stop_cond
+        type(bndry_t), intent(in), optional          :: bndry_left
+        type(bndry_t), intent(in), optional          :: bndry_right
+        type(bndry_t), intent(in), optional          :: bndry_top
+        type(bndry_t), intent(in), optional          :: bndry_bottom
+        class(init_t), intent(in), optional, pointer :: init
+        type(config_t)                               :: config
+        type(bndry_t)                                :: noslip_bndry
+        type(init_const_t), pointer                  :: init_const_zero
 
         ! Set input parameters
-        config % num_x = num_x
-        config % num_y = num_y
-        config % ds = ds
-        config % kvisc = kvisc
-        config % stop_time = stop_time
+        config % num_x = abs(num_x)
+        config % num_y = abs(num_y)
+        config % ds = abs(ds)
+        config % kvisc = abs(kvisc)
+        config % stop_time = abs(stop_time)
 
         ! Set derivied values
         config % dt = ds
@@ -151,28 +175,132 @@ contains
         config % len_x = (num_x - 1.0_wp) * ds 
         config % len_y = (num_y - 1.0_wp) * ds
         config % tau = 0.5_wp + kvisc / (CS2 * config % dt)
+
+        ! Set default values
+        config % density = 1.0_wp
+        config % stop_time = 1.0_wp
+        config % stop_etol = 1.0e-6_wp
+        config % stop_cond = STOP_COND_TIME
+
+        noslip_bndry % id = BNDRY_COND_NOSLIP
+        noslip_bndry % velocity = vector_t(0.0_wp, 0.0_wp)
+
+        config % bndry_left = noslip_bndry
+        config % bndry_right = noslip_bndry
+        config % bndry_top = noslip_bndry
+        config % bndry_bottom = noslip_bndry
+
+        allocate(init_const_zero)
+        init_const_zero % id = INIT_COND_CONST
+        init_const_zero % velocity = vector_t(0.0_wp, 0.0_wp)
+        config % init => init_const_zero
+
+        ! Set optional values
+        if ( present(density) ) then
+            config % density = abs(density)
+        end if
+        if ( present(stop_time) ) then
+            config % stop_time = abs(stop_time)
+        end if
+        if ( present(stop_etol) ) then
+            config % stop_etol = abs(stop_etol)
+        end if
+        if ( present(stop_cond) ) then
+            block
+                logical :: ok = .false.
+                select case(stop_cond)
+                case (STOP_COND_TIME, STOP_COND_STEADY)
+                    ok = .true.
+                end select
+            end block
+            config % stop_cond = stop_cond
+        end if
+        ! bndrys are NOT CHECKED ... do this in bndry constructor?
+        if ( present(bndry_left) ) then
+            config % bndry_left = bndry_left
+        end if
+        if ( present(bndry_right) ) then
+            config % bndry_right = bndry_right
+        end if
+        if ( present(bndry_top) ) then
+            config % bndry_top = bndry_top
+        end if
+        if ( present(bndry_bottom) ) then
+            config % bndry_bottom = bndry_bottom
+        end if
+
+        ! NOT CHECKED .... do this in init constructor?
+        if ( present(init) ) then
+            config % init => init
+        end if
+
+
     end function config_constructor
 
 
-    ! config_t type bound procedures
-    ! -------------------------------------------------------------------------
+    !! Initial condition parameters
+    !class(init_t), pointer  :: init     ! initial condition
+
 
     subroutine config_pprint(this)
-        class(config_t), intent(in) :: this
+        class(config_t), intent(in), target :: this
         print *, ''
-        print *, 'config input parameters'
+        print *, 'grid parameters'
         print *, '---------------------------------------------'
         print *, 'num_x     = ', this % num_x
         print *, 'num_y     = ', this % num_y
         print *, 'ds        = ', this % ds
+        print *, ''
+        print *, 'fluid parameters'
+        print *, '---------------------------------------------'
         print *, 'kvisc     = ', this % kvisc
         print *, 'density   = ', this % density
-        print *, 'stop_time = ', this % stop_time
-        print *, 'stop_cond = ', stop_cond_to_string(this % stop_cond)
-        print *, 'stop_etol = ', this % stop_etol
-
         print *, ''
-        print *, 'config derived parameters'
+        print *, 'stop parameters'
+        print *, '---------------------------------------------'
+        print *, 'stop_cond = ', stop_cond_to_string(this % stop_cond)
+        print *, 'stop_time = ', this % stop_time
+        if ( this % stop_cond == STOP_COND_STEADY ) then
+            print *, 'stop_etol = ', this % stop_etol
+        end if
+        print *, ''
+        print *, 'boundry parameters'
+        print *, '---------------------------------------------'
+        block
+            integer(ip)               :: i
+            character(:), allocatable :: bndry_name
+            character(:), allocatable :: type_string
+            type(bndry_ptr_t)         :: bndry_array(NUM_BNDRY)
+            bndry_array(1) % ptr => this % bndry_left
+            bndry_array(2) % ptr => this % bndry_right
+            bndry_array(3) % ptr => this % bndry_top
+            bndry_array(4) % ptr => this % bndry_bottom
+            do i=1,NUM_BNDRY
+                bndry_name = 'bndry.'//trim(BNDRY_NAMES(i))
+                type_string = bndry_to_string(bndry_array(i) % ptr % id)
+                print *, [character(15)::bndry_name]// 'type', ' = ', type_string 
+                print *, [character(16)::bndry_name//'.id'], & 
+                    '=', bndry_array(i) % ptr % id
+                print *, [character(24)::bndry_name//'.velocity.x'], & 
+                    '=',  bndry_array(i) % ptr % velocity % x
+                print *, [character(24)::bndry_name//'.velocity.y'], & 
+                    '=',  bndry_array(i) % ptr % velocity % y
+                print *, ''
+            end do
+        end block
+        print *, 'initial condition parameters'
+        print *, '---------------------------------------------'
+        print *, 'name      = ', this % init % name
+        print *, 'id        = ', this % init % id
+        select type (init => this % init)
+        class is (init_const_t)
+            print *, 'velcity x = ', init % velocity % x
+            print *, 'velcity y = ', init % velocity % y
+        class default
+            print *, 'value display not implemented'
+        end select
+        print *, ''
+        print *, 'derived parameters'
         print *, '---------------------------------------------'
         print *, 'nstep     = ', this % nstep
         print *, 'len_x     = ', this % len_x
@@ -336,6 +464,7 @@ contains
 
     end subroutine create_init_const
 
+
     subroutine read_stop_table(config, table)
         type(config_t), intent(inout)          :: config
         type(toml_table), pointer, intent(in)  :: table
@@ -422,14 +551,14 @@ contains
                     // "type missing"
                 stop
             end if
-            type_id = bndry_type_from_string(type_name)
+            type_id = bndry_from_string(type_name)
             if (type_id == BNDRY_COND_UNKNOWN) then
                 print *, "config .toml boundry."//trim(BNDRY_NAMES(i))& 
                     // " type unknown condition"
                 print *, "type = ", type_name
                 stop
             end if
-            bndry_array(i) % ptr % type_id = type_id
+            bndry_array(i) % ptr % id = type_id
 
             select case (type_id)
             case (BNDRY_COND_INFLOW, BNDRY_COND_MOVING)
@@ -461,6 +590,7 @@ contains
 
     end subroutine read_bndry_table
 
+
     function stop_cond_from_string(stop_cond_string) result(cstop)
         character(*), intent(in) :: stop_cond_string
         integer(ip)              :: cstop
@@ -489,27 +619,27 @@ contains
     end function stop_cond_to_string
 
 
-    function bndry_type_from_string(type_string) result(type_id)
+    function bndry_from_string(type_string) result(id)
         character(*), intent(in) :: type_string
-        integer(ip)              :: type_id
+        integer(ip)              :: id
         select case(type_string)
         case ("inflow")
-            type_id = BNDRY_COND_INFLOW
+            id = BNDRY_COND_INFLOW
         case ("moving")
-            type_id = BNDRY_COND_MOVING
+            id = BNDRY_COND_MOVING
         case ("outflow")
-            type_id = BNDRY_COND_OUTFLOW
+            id = BNDRY_COND_OUTFLOW
         case ("noslip")
-            type_id = BNDRY_COND_NOSLIP
+            id = BNDRY_COND_NOSLIP
         case ("slip")
-            type_id = BNDRY_COND_SLIP
+            id = BNDRY_COND_SLIP
         case default
-            type_id = BNDRY_COND_UNKNOWN
+            id = BNDRY_COND_UNKNOWN
         end select
-    end function bndry_type_from_string
+    end function bndry_from_string
 
 
-    function bndry_type_to_string(type_id) result(type_string)
+    function bndry_to_string(type_id) result(type_string)
         integer(ip), intent(in)   :: type_id
         character(:), allocatable :: type_string
         select case(type_id)
@@ -526,7 +656,8 @@ contains
         case default
             type_string = "unknown"
         end select
-    end function bndry_type_to_string
+    end function bndry_to_string
+
 
     function get_bndry_velocity(bndry_name, type_id, val) result(velocity)
         character(*), intent(in) :: bndry_name
@@ -562,6 +693,7 @@ contains
         end select
     end function get_bndry_velocity
 
+
     function init_id_from_string(init_string) result(init_id)
         character(*), intent(in) :: init_string
         integer(ip)              :: init_id
@@ -575,6 +707,7 @@ contains
         end select
     end function init_id_from_string
 
+
     function init_id_to_string(init_id) result(init_string)
         integer(ip), intent(in)   :: init_id
         character(:), allocatable :: init_string
@@ -587,8 +720,6 @@ contains
             init_string = 'unknown'
         end select
     end function init_id_to_string
-
-
 
 
 end module slbm_2d_config

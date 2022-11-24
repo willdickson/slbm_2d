@@ -19,6 +19,7 @@ contains
         !real(wp)           :: density = 1.0_wp
         !real(wp)           :: tstop = 25.0_wp
 
+
         character(:), allocatable :: filename
         type(config_t)            :: config
         type(simulation_t)        :: sim
@@ -27,15 +28,16 @@ contains
         config = config_t(filename)
         call config % pprint()
 
-        print *, config % init % name, config % init % id 
+        !print *, config % init % name, config % init % id 
 
-        select type(init => config % init)
-        class is (init_const_t)
-            print *, 'vx = ', init % velocity % x ,  'vy = ', init % velocity % y
-        class default
-            print *, 'unknown class'
-        end select 
+        !select type(init => config % init)
+        !class is (init_const_t)
+        !    print *, 'vx = ', init % velocity % x ,  'vy = ', init % velocity % y
+        !class default
+        !    print *, 'unknown class'
+        !end select 
 
+        !allocate(init)
         !config  = config_t(num_x, num_y, ds, kvisc, density, tstop)
         !call config % pprint()
 

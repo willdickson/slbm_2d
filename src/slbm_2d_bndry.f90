@@ -6,7 +6,7 @@ module slbm_2d_bndry
     private
 
     type, public :: bndry_t
-        integer(ip)    :: type_id  = BNDRY_COND_UNKNOWN
+        integer(ip)    :: id  = BNDRY_COND_UNKNOWN
         type(vector_t) :: velocity
     end type bndry_t
 
@@ -20,11 +20,11 @@ module slbm_2d_bndry
 
 contains
 
-    function bndry_constructor(type_id, velocity) result(bndry)
-        integer(ip), intent(in)    :: type_id
+    function bndry_constructor(id, velocity) result(bndry)
+        integer(ip), intent(in)    :: id
         type(vector_t), intent(in) :: velocity
         type(bndry_t)              :: bndry
-        bndry % type_id = type_id
+        bndry % id = id
         bndry % velocity = velocity
     end function bndry_constructor
 
