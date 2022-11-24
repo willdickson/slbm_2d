@@ -1,17 +1,17 @@
 module slbm_2d_density
     use slbm_2d_kinds,  only : wp, ip
+    use slbm_2d_config, only : config_t
     use slbm_2d_vector, only : vector_t
     implicit none
     private
 
     type, public :: density_t
-        integer(ip)                 :: num_x = 0_ip
-        integer(ip)                 :: num_y = 0_ip
-        type(vector_t), allocatable :: curr(:,:)
-        type(vector_t), allocatable :: pred(:,:)
+        real(wp), allocatable :: curr(:,:)
+        real(wp), allocatable :: pred(:,:)
 
     contains
         private
+        procedure         :: set_initial_cond
         procedure, public :: deallocate => density_deallocate
         final    :: density_destructor 
     end type density_t
@@ -23,13 +23,20 @@ module slbm_2d_density
 
 contains
 
-    function density_constructor(num_x, num_y) result(density)
-        integer(ip), intent(in) :: num_x
-        integer(ip), intent(in) :: num_y
-        type(density_t)         :: density
-        allocate(density % curr(num_x, num_y))
-        allocate(density % pred(num_x, num_y))
+    function density_constructor(config) result(density)
+        type(config_t), intent(in) :: config
+        type(density_t)            :: density
+        allocate(density % curr(config % num_x, config % num_y))
+        allocate(density % pred(config % num_x, config % num_y))
+        call density % set_initial_cond(config)
     end function density_constructor
+
+    subroutine set_initial_cond(this, config)
+        class(density_t), intent(inout) :: this
+        type(config_t), intent(in)      :: config
+        this % curr = config % density
+        this % pred = 0.0_wp
+    end subroutine set_initial_cond
 
     subroutine density_deallocate(this)
         class(density_t), intent(inout) :: this
