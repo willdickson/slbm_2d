@@ -24,6 +24,11 @@ module slbm_2d_const
     public :: BNDRY_COND_SLIP      ! Slip boundary condition
     public :: BNDRY_COND_UNKNOWN   ! Unknown boundary condition (error)
 
+    ! Initial condition ids
+    public :: INIT_COND_CONST      ! Constant velocity initial condition
+    public :: INIT_COND_FILE       ! Initial condition from file
+    public :: INIT_COND_UNKNOWN    ! Unknown initial condition
+
     ! Latice constants
     public :: CS                   ! lbm speed of sound 
     public :: CS2                  ! lbm square of sound speed
@@ -52,6 +57,11 @@ module slbm_2d_const
     integer(ip), parameter :: BNDRY_COND_NOSLIP   = 4
     integer(ip), parameter :: BNDRY_COND_SLIP     = 5
     integer(ip), parameter :: BNDRY_COND_UNKNOWN  = 6
+
+    ! Initial condition ids
+    integer(ip), parameter :: INIT_COND_CONST    = 1
+    integer(ip), parameter :: INIT_COND_FILE     = 2
+    integer(ip), parameter :: INIT_COND_UNKNOWN  = 3
 
     ! Latice constants
     real(wp),    parameter :: CS  = 1.0_wp/sqrt(3.0_wp)

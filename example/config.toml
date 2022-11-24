@@ -7,26 +7,29 @@ num_y = 101        # number of y grid points
 kvisc   = 1.0e-4   # kinematic viscosity 
 density = 1.0      # reference density  
 
+[init]
+type = 'constant'
+velocity.x = 0.1
+velocity.y = 0.0
+
+[bndry.left]
+#type = 'inflow'
+#value = 0.1
+type = 'noslip'
+
+[bndry.right]
+#type = 'outflow'
+type = 'noslip'
+
+[bndry.top]
+#type = 'noslip'
+type ='moving'
+value = 0.1
+
+[bndry.bottom]
+type = 'noslip'
+
 [stop]       
 cond  = "time"      # termination critera
 time  = 10.0        # simulation stop time
 etol  = 1.0e-5      # error tolerance for steady state  (optional)
-
-# Set rectangular domain boundary conditions
-# options: inflow, outflow, noslip, slip
-
-[boundary.left]
-type = 'inflow'
-velocity = 0.1
-
-[boundary.right]
-type = 'outflow'
-
-[boundary.top]
-type = 'noslip'
-
-[boundary.bottom]
-type = 'noslip'
-
-
-

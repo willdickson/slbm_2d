@@ -2,23 +2,28 @@ module slbm_2d_config
     use, intrinsic :: ieee_arithmetic, only : ieee_quiet_nan
     use, intrinsic :: ieee_arithmetic, only : ieee_is_nan
     use, intrinsic :: ieee_arithmetic, only : ieee_value 
-    use slbm_2d_kinds, only : wp, ip
-    use slbm_2d_const, only : NUM_BNDRY
-    use slbm_2d_const, only : BNDRY_NAMES
-    use slbm_2d_const, only : STOP_COND_TIME
-    use slbm_2d_const, only : STOP_COND_STEADY
-    use slbm_2d_const, only : STOP_COND_UNKNOWN
-    use slbm_2d_const, only : BNDRY_COND_INFLOW
-    use slbm_2d_const, only : BNDRY_COND_MOVING
-    use slbm_2d_const, only : BNDRY_COND_OUTFLOW
-    use slbm_2d_const, only : BNDRY_COND_NOSLIP
-    use slbm_2d_const, only : BNDRY_COND_SLIP
-    use slbm_2d_const, only : BNDRY_COND_UNKNOWN
-    use slbm_2d_const, only : CS
-    use slbm_2d_const, only : CS2
-    use slbm_2d_bndry, only : bndry_t
-    use slbm_2d_bndry, only : bndry_ptr_t
+    use slbm_2d_kinds,  only : wp, ip
+    use slbm_2d_const,  only : NUM_BNDRY
+    use slbm_2d_const,  only : BNDRY_NAMES
+    use slbm_2d_const,  only : STOP_COND_TIME
+    use slbm_2d_const,  only : STOP_COND_STEADY
+    use slbm_2d_const,  only : STOP_COND_UNKNOWN
+    use slbm_2d_const,  only : BNDRY_COND_INFLOW
+    use slbm_2d_const,  only : BNDRY_COND_MOVING
+    use slbm_2d_const,  only : BNDRY_COND_OUTFLOW
+    use slbm_2d_const,  only : BNDRY_COND_NOSLIP
+    use slbm_2d_const,  only : BNDRY_COND_SLIP
+    use slbm_2d_const,  only : BNDRY_COND_UNKNOWN
+    use slbm_2d_const,  only : INIT_COND_CONST
+    use slbm_2d_const,  only : INIT_COND_FILE
+    use slbm_2d_const,  only : INIT_COND_UNKNOWN
+    use slbm_2d_const,  only : CS
+    use slbm_2d_const,  only : CS2
+    use slbm_2d_bndry,  only : bndry_t
+    use slbm_2d_bndry,  only : bndry_ptr_t
     use slbm_2d_vector, only : vector_t
+    use slbm_2d_init,   only : init_t
+    use slbm_2d_init,   only : init_const_t
     use tomlf, only : toml_table
     use tomlf, only : toml_error
     use tomlf, only : toml_parse
@@ -28,21 +33,30 @@ module slbm_2d_config
 
 
     type, public :: config_t
-        ! Input configuration parameters
+
+        ! Grid parameters
         integer(ip) :: num_x      = 0_ip   ! number of x grid points
         integer(ip) :: num_y      = 0_ip   ! number of y grid points
         real(wp)    :: ds         = 0.0_wp ! mesh step size  ds=dx=dy
+
+        ! Fluid parameters
         real(wp)    :: kvisc      = 0.0_wp ! kinematic viscosity 
         real(wp)    :: density    = 0.0_wp ! reference density
+
+
+        ! Stopping conditon parameters
         real(wp)    :: stop_time  = 0.0_wp ! simulation stop time
         real(wp)    :: stop_etol  = 0.0_wp ! simulation (steady) stop err tol.
         integer(ip) :: stop_cond  = STOP_COND_TIME 
 
         ! Boundary condition parameters
-        type(bndry_t) :: bndry_left
-        type(bndry_t) :: bndry_right
-        type(bndry_t) :: bndry_top
-        type(bndry_t) :: bndry_bottom
+        type(bndry_t) :: bndry_left         ! left   boundary condition
+        type(bndry_t) :: bndry_right        ! right  boundary condition
+        type(bndry_t) :: bndry_top          ! top    boundary condition 
+        type(bndry_t) :: bndry_bottom       ! bottom boundary condition
+
+        ! Initial condition parameters
+        class(init_t), pointer  :: init     ! initial condition
 
         ! Derived configuration parameters
         integer(ip) :: nstep   = 0_ip   ! number of time steps
@@ -68,8 +82,8 @@ contains
     ! -------------------------------------------------------------------------
 
     function config_from_toml(filename) result(config)
-        character(*),     intent(in)          :: filename
-        type(config_t)                        :: config
+        character(*),     intent(in)          :: filename ! name of config file
+        type(config_t)                        :: config   
         type(toml_table), allocatable, target :: table
         type(toml_table), pointer             :: table_ptr
 
@@ -252,8 +266,8 @@ contains
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: init_table
         integer(ip)                            :: stat
-        real(wp)                               :: nan
-        nan = ieee_value(nan, ieee_quiet_nan)
+        integer(ip)                            :: init_id
+        character(:), allocatable              :: init_name
 
         call get_value(table, "init", init_table, .false.)
         if (.not. associated(init_table) ) then
@@ -261,8 +275,66 @@ contains
             stop
         endif
 
+        call get_value(init_table, "type", init_name, init_name) 
+        if ( .not. allocated(init_name) ) then
+            print *, "config .toml init is missing type or it is not a string"
+            stop
+        end if
+
+        select case(init_name)
+        case ('constant') 
+            block
+                type(init_const_t), pointer :: init
+                call create_init_const(init_table, init_name, init)
+                config % init => init
+            end block
+        case ('file')
+            print *, "config .toml init type file not implement yet"
+            stop
+        case default
+            print *, "config .toml init unknown type"
+            print *, "type = ", init_name
+            stop
+        end select
+
     end subroutine read_init_table
 
+    subroutine create_init_const(init_table, init_name, init) 
+        type(toml_table), pointer, intent(in)    :: init_table
+        character(*), intent(in)                 :: init_name
+        type(init_const_t), pointer, intent(out) :: init
+        type(toml_table), pointer                :: velo_table
+        integer(ip)                              :: stat
+        real(wp)                                 :: nan
+        nan = ieee_value(nan, ieee_quiet_nan)
+
+        allocate(init)
+        init % name = init_name
+        init % id = INIT_COND_CONST
+
+        call get_value(init_table, "velocity", velo_table, .false.)
+        if (.not. associated(velo_table) ) then
+            print *, "config .toml init, type=constant missing velocity"
+            stop
+        endif
+
+        init % velocity % x = nan
+        call get_value(velo_table, "x", init % velocity % x, nan, stat)
+        if ( (stat < 0) .or. (ieee_is_nan(init % velocity % x)) ) then
+            print *, "config .toml init velocity  missing x or is not a real"
+            print *, "x = ", init % velocity % x
+            stop
+        end if
+
+        init % velocity % y = nan
+        call get_value(velo_table, "y", init % velocity % y, nan, stat)
+        if ( (stat < 0) .or. (ieee_is_nan(init % velocity % y)) ) then
+            print *, "config .toml init velocity  missing y or is not a real"
+            print *, "y = ", init % velocity % y
+            stop
+        end if
+
+    end subroutine create_init_const
 
     subroutine read_stop_table(config, table)
         type(config_t), intent(inout)          :: config
@@ -279,7 +351,7 @@ contains
             stop
         endif
 
-        call get_value(stop_table, "cond", cond, cond, stat) 
+        call get_value(stop_table, "cond", cond, cond) 
         if ( .not. allocated(cond) ) then
             print *, "config .toml stop is missing cond or not a string"
             stop
@@ -416,6 +488,7 @@ contains
         end select
     end function stop_cond_to_string
 
+
     function bndry_type_from_string(type_string) result(type_id)
         character(*), intent(in) :: type_string
         integer(ip)              :: type_id
@@ -434,6 +507,7 @@ contains
             type_id = BNDRY_COND_UNKNOWN
         end select
     end function bndry_type_from_string
+
 
     function bndry_type_to_string(type_id) result(type_string)
         integer(ip), intent(in)   :: type_id
@@ -487,6 +561,34 @@ contains
             end select
         end select
     end function get_bndry_velocity
+
+    function init_id_from_string(init_string) result(init_id)
+        character(*), intent(in) :: init_string
+        integer(ip)              :: init_id
+        select case (init_string)
+        case ('constant')
+            init_id = INIT_COND_CONST
+        case ('file')
+            init_id = INIT_COND_FILE
+        case default
+            init_id = INIT_COND_UNKNOWN
+        end select
+    end function init_id_from_string
+
+    function init_id_to_string(init_id) result(init_string)
+        integer(ip), intent(in)   :: init_id
+        character(:), allocatable :: init_string
+        select case (init_id)
+        case (INIT_COND_CONST)
+            init_string = 'constant'
+        case (INIT_COND_FILE)
+            init_string = 'file'
+        case default
+            init_string = 'unknown'
+        end select
+    end function init_id_to_string
+
+
 
 
 end module slbm_2d_config

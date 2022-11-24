@@ -1,6 +1,8 @@
 module slbm_2d
     use slbm_2d_kinds,      only : wp, ip
     use slbm_2d_config,     only : config_t
+    use slbm_2d_init,       only : init_t
+    use slbm_2d_init,       only : init_const_t
     use slbm_2d_simulation, only : simulation_t
 
     implicit none
@@ -24,6 +26,15 @@ contains
         filename = './example/config.toml'
         config = config_t(filename)
         call config % pprint()
+
+        print *, config % init % name, config % init % id 
+
+        select type(init => config % init)
+        class is (init_const_t)
+            print *, 'vx = ', init % velocity % x ,  'vy = ', init % velocity % y
+        class default
+            print *, 'unknown class'
+        end select 
 
         !config  = config_t(num_x, num_y, ds, kvisc, density, tstop)
         !call config % pprint()
