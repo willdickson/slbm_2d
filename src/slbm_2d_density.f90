@@ -31,12 +31,14 @@ contains
         call density % set_initial_cond(config)
     end function density_constructor
 
+
     subroutine set_initial_cond(this, config)
         class(density_t), intent(inout) :: this
         type(config_t), intent(in)      :: config
         this % curr = config % density
         this % pred = 0.0_wp
     end subroutine set_initial_cond
+
 
     subroutine density_deallocate(this)
         class(density_t), intent(inout) :: this
@@ -48,9 +50,11 @@ contains
         end if
     end subroutine density_deallocate
 
+
     subroutine density_destructor(this)
         type(density_t), intent(inout) :: this
         call this % deallocate()
     end subroutine density_destructor
+
 
 end module slbm_2d_density

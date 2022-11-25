@@ -1,6 +1,13 @@
 module slbm_2d_init
+
     use slbm_2d_kinds,  only : wp, ip
+
+    use slbm_2d_const,  only : INIT_COND_CONST
+    use slbm_2d_const,  only : INIT_COND_FILE
+    use slbm_2d_const,  only : INIT_COND_UNKNOWN
+
     use slbm_2d_vector, only : vector_t
+
     implicit none
     private
 
@@ -17,5 +24,36 @@ module slbm_2d_init
         character(:), allocatable :: filename
     end type init_file_t
 
+    public :: init_id_from_string
+    public :: init_id_to_string
+
+contains
+
+    function init_id_from_string(init_string) result(init_id)
+        character(*), intent(in) :: init_string
+        integer(ip)              :: init_id
+        select case (init_string)
+        case ( 'constant' )
+            init_id = INIT_COND_CONST
+        case ( 'file' )
+            init_id = INIT_COND_FILE
+        case default
+            init_id = INIT_COND_UNKNOWN
+        end select
+    end function init_id_from_string
+
+
+    function init_id_to_string(init_id) result(init_string)
+        integer(ip), intent(in)   :: init_id
+        character(:), allocatable :: init_string
+        select case (init_id)
+        case ( INIT_COND_CONST )
+            init_string = 'constant'
+        case ( INIT_COND_FILE )
+            init_string = 'file'
+        case default
+            init_string = 'unknown'
+        end select
+    end function init_id_to_string
 
 end module slbm_2d_init

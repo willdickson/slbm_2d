@@ -25,6 +25,10 @@ contains
         call sim % run()
 
 
+        !print *, sim % config % init % id
+        !print *, sim % config % bndry_left % id
+        !print *, sim % config % bndry_array(1) % ptr % id
+
 
     end subroutine testing
 

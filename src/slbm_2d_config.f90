@@ -4,27 +4,46 @@ module slbm_2d_config
     use, intrinsic :: ieee_arithmetic, only : ieee_is_nan
     use, intrinsic :: ieee_arithmetic, only : ieee_value 
     use slbm_2d_kinds,  only : wp, ip
-    use slbm_2d_const,  only : NUM_BNDRY
-    use slbm_2d_const,  only : BNDRY_NAMES
+
     use slbm_2d_const,  only : STOP_COND_TIME
     use slbm_2d_const,  only : STOP_COND_STEADY
     use slbm_2d_const,  only : STOP_COND_UNKNOWN
+
+    use slbm_2d_const,  only : NUM_BNDRY
+    use slbm_2d_const,  only : BNDRY_SIDE_LEFT
+    use slbm_2d_const,  only : BNDRY_SIDE_RIGHT
+    use slbm_2d_const,  only : BNDRY_SIDE_TOP
+    use slbm_2d_const,  only : BNDRY_SIDE_BOTTOM
+    use slbm_2d_const,  only : BNDRY_SIDE_UNKNOWN
+    use slbm_2d_const,  only : BNDRY_SIDE_NAMES
+    use slbm_2d_const,  only : BNDRY_SIDE_IDS
+
     use slbm_2d_const,  only : BNDRY_COND_INFLOW
     use slbm_2d_const,  only : BNDRY_COND_MOVING
     use slbm_2d_const,  only : BNDRY_COND_OUTFLOW
     use slbm_2d_const,  only : BNDRY_COND_NOSLIP
     use slbm_2d_const,  only : BNDRY_COND_SLIP
     use slbm_2d_const,  only : BNDRY_COND_UNKNOWN
+
     use slbm_2d_const,  only : INIT_COND_CONST
-    use slbm_2d_const,  only : INIT_COND_FILE
-    use slbm_2d_const,  only : INIT_COND_UNKNOWN
+
     use slbm_2d_const,  only : CS
     use slbm_2d_const,  only : CS2
+
     use slbm_2d_bndry,  only : bndry_t
     use slbm_2d_bndry,  only : bndry_ptr_t
+    use slbm_2d_bndry,  only : cond_id_from_name
+    use slbm_2d_bndry,  only : side_id_from_name
+    use slbm_2d_bndry,  only : cond_id_to_name
+    use slbm_2d_bndry,  only : side_id_to_name
+
     use slbm_2d_vector, only : vector_t
+
     use slbm_2d_init,   only : init_t
     use slbm_2d_init,   only : init_const_t
+    use slbm_2d_init,   only : init_id_from_string
+    use slbm_2d_init,   only : init_id_to_string
+
     use tomlf, only : toml_table
     use tomlf, only : toml_error
     use tomlf, only : toml_parse
@@ -50,11 +69,8 @@ module slbm_2d_config
         real(wp)    :: stop_etol  = 0.0_wp ! simulation (steady) stop err tol.
         integer(ip) :: stop_cond  = STOP_COND_TIME 
 
-        ! Boundary condition parameters
-        type(bndry_t) :: bndry_left         ! left   boundary condition
-        type(bndry_t) :: bndry_right        ! right  boundary condition
-        type(bndry_t) :: bndry_top          ! top    boundary condition 
-        type(bndry_t) :: bndry_bottom       ! bottom boundary condition
+        ! Array of bndry conditions for easy looping
+        type(bndry_ptr_t) :: bndry_cond(NUM_BNDRY) 
 
         ! Initial condition parameters
         class(init_t), pointer  :: init     ! initial condition
@@ -84,16 +100,18 @@ contains
 
     function config_from_toml(filename) result(config)
         character(*),     intent(in)          :: filename ! name of config file
-        type(config_t)                        :: config   
+        type(config_t),   allocatable, target :: config   
         type(toml_table), allocatable, target :: table
         type(toml_table), pointer             :: table_ptr
+
+        allocate(config)
 
         ! Check to make sure the configuration file exists
         block
             logical :: file_exists
             inquire(file=filename, exist=file_exists)
             if ( .not. file_exists ) then
-                print *, "unable to continue - " // filename // " doesn't exist"
+                print *, 'unable to continue - ' // filename // ' does not exist'
                 stop 
             end if
         end block
@@ -107,7 +125,7 @@ contains
             close(unit=io)
             ! If there was an error parsing the file exit
             if ( allocated(parse_error) ) then 
-                print *, "unable to parse file " // filename
+                print *, 'unable to parse file ' // filename
                 print *, parse_error % message
                 stop
             end if
@@ -128,6 +146,7 @@ contains
         config % len_y = (config % num_y - 1.0_wp) * config % ds
         config % tau = 0.5_wp + (config % kvisc) / (CS2 * config % dt)
 
+
     end function config_from_toml
 
     function config_constructor( &
@@ -139,28 +158,25 @@ contains
             stop_time,    &  ! simulation stop time  
             stop_etol,    &  ! error tolerance for steady stop
             stop_cond,    &  ! stop condition id
-            bndry_left,   &  ! left boundary condition  (optional)
-            bndry_right,  &  ! right boundary condition (optional)
-            bndry_top,    &  ! top boundary condition   (optional)
-            bndry_bottom, &  ! bottom boundary contiion (optional)
+            bndry_cond,  &  ! boundary conditions
             init          &  ! initial conditions
             ) result(config)
-        integer(ip),   intent(in)                    :: num_x
-        integer(ip),   intent(in)                    :: num_y
-        real(wp),      intent(in)                    :: ds
-        real(wp),      intent(in)                    :: kvisc
-        real(wp),      intent(in), optional          :: density
-        real(wp),      intent(in), optional          :: stop_time
-        real(wp),      intent(in), optional          :: stop_etol
-        integer(ip),   intent(in), optional          :: stop_cond
-        type(bndry_t), intent(in), optional          :: bndry_left
-        type(bndry_t), intent(in), optional          :: bndry_right
-        type(bndry_t), intent(in), optional          :: bndry_top
-        type(bndry_t), intent(in), optional          :: bndry_bottom
+        integer(ip), intent(in)                      :: num_x
+        integer(ip), intent(in)                      :: num_y
+        real(wp), intent(in)                         :: ds
+        real(wp), intent(in)                         :: kvisc
+        real(wp), intent(in), optional               :: density
+        real(wp), intent(in), optional               :: stop_time
+        real(wp), intent(in), optional               :: stop_etol
+        integer(ip),intent(in), optional             :: stop_cond
+        type(bndry_ptr_t), intent(in), optional      :: bndry_cond(NUM_BNDRY)
         class(init_t), intent(in), optional, pointer :: init
-        type(config_t)                               :: config
-        type(bndry_t)                                :: noslip_bndry
+
+        type(config_t), allocatable, target          :: config
         type(init_const_t), pointer                  :: init_const_zero
+        integer(ip)                                  :: i
+
+        allocate(config)
 
         ! Set input parameters
         config % num_x = abs(num_x)
@@ -182,13 +198,20 @@ contains
         config % stop_etol = 1.0e-6_wp
         config % stop_cond = STOP_COND_TIME
 
-        noslip_bndry % id = BNDRY_COND_NOSLIP
-        noslip_bndry % velocity = vector_t(0.0_wp, 0.0_wp)
-
-        config % bndry_left = noslip_bndry
-        config % bndry_right = noslip_bndry
-        config % bndry_top = noslip_bndry
-        config % bndry_bottom = noslip_bndry
+        block
+            type(bndry_t)          :: noslip_bndry
+            type(bndry_t), pointer :: bndry
+            noslip_bndry % side_id = BNDRY_SIDE_UNKNOWN
+            noslip_bndry % cond_id = BNDRY_COND_NOSLIP
+            noslip_bndry % velocity = vector_t(0.0_wp, 0.0_wp)
+            do i = 1, NUM_BNDRY
+                allocate(config % bndry_cond(i) % ptr)
+                bndry => config % bndry_cond(i) % ptr
+                bndry % side_id = BNDRY_SIDE_IDS(i)
+                bndry % cond_id = BNDRY_COND_NOSLIP
+                noslip_bndry % velocity = vector_t(0.0_wp, 0.0_wp)
+            end do
+        end block
 
         allocate(init_const_zero)
         init_const_zero % id = INIT_COND_CONST
@@ -215,31 +238,29 @@ contains
             end block
             config % stop_cond = stop_cond
         end if
+
         ! bndrys are NOT CHECKED ... do this in bndry constructor?
-        if ( present(bndry_left) ) then
-            config % bndry_left = bndry_left
-        end if
-        if ( present(bndry_right) ) then
-            config % bndry_right = bndry_right
-        end if
-        if ( present(bndry_top) ) then
-            config % bndry_top = bndry_top
-        end if
-        if ( present(bndry_bottom) ) then
-            config % bndry_bottom = bndry_bottom
+        if ( present(bndry_cond) ) then
+            do i=1,NUM_BNDRY
+                if ( associated(bndry_cond(i) % ptr) ) then
+                    config % bndry_cond(i) % ptr => bndry_cond(i) % ptr
+                else
+                    print *, 'config constructor bndry ptr not allocated'
+                    stop
+                end if
+            end do
         end if
 
         ! NOT CHECKED .... do this in init constructor?
         if ( present(init) ) then
-            config % init => init
+            if ( associated(init) ) then
+                config % init => init
+            else
+                print *, 'config constructor init not allocated'
+            end if
         end if
 
-
     end function config_constructor
-
-
-    !! Initial condition parameters
-    !class(init_t), pointer  :: init     ! initial condition
 
 
     subroutine config_pprint(this)
@@ -268,23 +289,23 @@ contains
         print *, '---------------------------------------------'
         block
             integer(ip)               :: i
-            character(:), allocatable :: bndry_name
-            character(:), allocatable :: type_string
-            type(bndry_ptr_t)         :: bndry_array(NUM_BNDRY)
-            bndry_array(1) % ptr => this % bndry_left
-            bndry_array(2) % ptr => this % bndry_right
-            bndry_array(3) % ptr => this % bndry_top
-            bndry_array(4) % ptr => this % bndry_bottom
+            type(bndry_t), pointer    :: bndry
+            character(:), allocatable :: side_name
+            character(:), allocatable :: cond_name
             do i=1,NUM_BNDRY
-                bndry_name = 'bndry.'//trim(BNDRY_NAMES(i))
-                type_string = bndry_to_string(bndry_array(i) % ptr % id)
-                print *, [character(15)::bndry_name]// 'type', ' = ', type_string 
-                print *, [character(16)::bndry_name//'.id'], & 
-                    '=', bndry_array(i) % ptr % id
-                print *, [character(24)::bndry_name//'.velocity.x'], & 
-                    '=',  bndry_array(i) % ptr % velocity % x
-                print *, [character(24)::bndry_name//'.velocity.y'], & 
-                    '=',  bndry_array(i) % ptr % velocity % y
+                bndry => this % bndry_cond(i) % ptr
+                side_name = 'bndry.'//trim(BNDRY_SIDE_NAMES(i))
+                cond_name = cond_id_to_name(bndry % cond_id)
+                print *, [character(24)::side_name // ' (cond name)'], '=', & 
+                    ' ' // cond_name 
+                print *, [character(24)::side_name  // '.cond_id'],  '=', &
+                    bndry % cond_id
+                print *, [character(24)::side_name  // '.side_id'], '=', & 
+                    bndry % side_id
+                print *, [character(24)::side_name  // '.velocity.x'], '=', & 
+                    bndry % velocity % x
+                print *, [character(24)::side_name  // '.velocity.y'], '=', & 
+                    bndry % velocity % y
                 print *, ''
             end do
         end block
@@ -322,34 +343,34 @@ contains
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
-        call get_value(table, "mesh", mesh_table, .false.)
+        call get_value(table, 'mesh', mesh_table, .false.)
         if (.not. associated(mesh_table) ) then
-            print *, "config .toml missing mesh section"
+            print *, 'config .toml missing mesh section'
             stop
         endif
 
         config % ds = nan
-        call get_value(mesh_table, "ds", config % ds, nan, stat)
+        call get_value(mesh_table, 'ds', config % ds, nan, stat)
         if ( (stat < 0) .or. ( ieee_is_nan(config % ds) ) ) then 
-            print *, "config .toml mesh is missing ds or value is not a real" 
-            print *, "ds = ", config % ds
+            print *, 'config .toml mesh is missing ds or value is not a real' 
+            print *, 'ds = ', config % ds
             stop
         end if
         config % ds = abs(config % ds)
 
         config % num_x = 0_ip
-        call get_value(mesh_table, "num_x", config % num_x, -1_ip, stat)
+        call get_value(mesh_table, 'num_x', config % num_x, -1_ip, stat)
         if ( (stat < 0) .or. (config % num_x < 0) ) then
-            print *, "config .toml mesh is missing num_x or value is negative"
-            print *, "num_x = ", config % num_x
+            print *, 'config .toml mesh is missing num_x or value is negative'
+            print *, 'num_x = ', config % num_x
             stop
         end if
 
         config % num_y = 0_ip
-        call get_value(mesh_table, "num_y", config % num_y, -1_ip, stat)
+        call get_value(mesh_table, 'num_y', config % num_y, -1_ip, stat)
         if ( (stat < 0) .or. (config % num_y < 0) ) then
-            print *, "config .toml mesh is missing num_y or value is negative"
-            print *, "num_y = ", config % num_y
+            print *, 'config .toml mesh is missing num_y or value is negative'
+            print *, 'num_y = ', config % num_y
             stop
         end if
     end subroutine read_mesh_table
@@ -363,26 +384,26 @@ contains
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
-        call get_value(table, "fluid", fluid_table, .false.)
+        call get_value(table, 'fluid', fluid_table, .false.)
         if (.not. associated(fluid_table) ) then
-            print *, "config .toml missing fluid section"
+            print *, 'config .toml missing fluid section'
             stop
         endif
 
         config % kvisc = nan
-        call get_value(fluid_table, "kvisc", config % kvisc, nan, stat)
+        call get_value(fluid_table, 'kvisc', config % kvisc, nan, stat)
         if ( (stat < 0) .or. (ieee_is_nan(config % kvisc)) ) then
-            print *, "config .toml fluid is missing kvisc or is not a real"
-            print *, "kvisc = ", config % kvisc
+            print *, 'config .toml fluid is missing kvisc or is not a real'
+            print *, 'kvisc = ', config % kvisc
             stop
         end if
         config % kvisc = abs(config % kvisc)
 
         config % density = nan
-        call get_value(fluid_table, "density", config % density, nan, stat)
+        call get_value(fluid_table, 'density', config % density, nan, stat)
         if ( (stat < 0) .or. (ieee_is_nan(config % density)) ) then
-            print *, "config .toml fluid is missing density or is not a real"
-            print *, "kvisc = ", config % density 
+            print *, 'config .toml fluid is missing density or is not a real'
+            print *, 'kvisc = ', config % density 
             stop
         end if
         config % density = abs(config % density)
@@ -397,15 +418,15 @@ contains
         integer(ip)                            :: init_id
         character(:), allocatable              :: init_name
 
-        call get_value(table, "init", init_table, .false.)
+        call get_value(table, 'init', init_table, .false.)
         if (.not. associated(init_table) ) then
-            print *, "config .toml missing init section"
+            print *, 'config .toml missing init section'
             stop
         endif
 
-        call get_value(init_table, "type", init_name, init_name) 
+        call get_value(init_table, 'type', init_name, init_name) 
         if ( .not. allocated(init_name) ) then
-            print *, "config .toml init is missing type or it is not a string"
+            print *, 'config .toml init is missing type or it is not a string'
             stop
         end if
 
@@ -417,15 +438,16 @@ contains
                 config % init => init
             end block
         case ('file')
-            print *, "config .toml init type file not implement yet"
+            print *, 'config .toml init type file not implement yet'
             stop
         case default
-            print *, "config .toml init unknown type"
-            print *, "type = ", init_name
+            print *, 'config .toml init unknown type'
+            print *, 'type = ', init_name
             stop
         end select
 
     end subroutine read_init_table
+
 
     subroutine create_init_const(init_table, init_name, init) 
         type(toml_table), pointer, intent(in)    :: init_table
@@ -440,25 +462,25 @@ contains
         init % name = init_name
         init % id = INIT_COND_CONST
 
-        call get_value(init_table, "velocity", velo_table, .false.)
+        call get_value(init_table, 'velocity', velo_table, .false.)
         if (.not. associated(velo_table) ) then
-            print *, "config .toml init, type=constant missing velocity"
+            print *, 'config .toml init, type=constant missing velocity'
             stop
         endif
 
         init % velocity % x = nan
-        call get_value(velo_table, "x", init % velocity % x, nan, stat)
+        call get_value(velo_table, 'x', init % velocity % x, nan, stat)
         if ( (stat < 0) .or. (ieee_is_nan(init % velocity % x)) ) then
-            print *, "config .toml init velocity  missing x or is not a real"
-            print *, "x = ", init % velocity % x
+            print *, 'config .toml init velocity  missing x or is not a real'
+            print *, 'x = ', init % velocity % x
             stop
         end if
 
         init % velocity % y = nan
-        call get_value(velo_table, "y", init % velocity % y, nan, stat)
+        call get_value(velo_table, 'y', init % velocity % y, nan, stat)
         if ( (stat < 0) .or. (ieee_is_nan(init % velocity % y)) ) then
-            print *, "config .toml init velocity  missing y or is not a real"
-            print *, "y = ", init % velocity % y
+            print *, 'config .toml init velocity  missing y or is not a real'
+            print *, 'y = ', init % velocity % y
             stop
         end if
 
@@ -474,38 +496,38 @@ contains
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
-        call get_value(table, "stop", stop_table, .false.)
+        call get_value(table, 'stop', stop_table, .false.)
         if (.not. associated(stop_table) ) then
-            print *, "config .toml missing stop section"
+            print *, 'config .toml missing stop section'
             stop
         endif
 
-        call get_value(stop_table, "cond", cond, cond) 
+        call get_value(stop_table, 'cond', cond, cond) 
         if ( .not. allocated(cond) ) then
-            print *, "config .toml stop is missing cond or not a string"
+            print *, 'config .toml stop is missing cond or not a string'
             stop
         end if
         config % stop_cond = stop_cond_from_string(cond)
         if (config % stop_cond == STOP_COND_UNKNOWN) then
-            print *, "config .toml stop, unknown stop condition"
-            print *, "cond = ", cond
+            print *, 'config .toml stop, unknown stop condition'
+            print *, 'cond = ', cond
             stop
         end if
 
         config % stop_time = nan
-        call get_value(stop_table, "time", config % stop_time, nan, stat)
+        call get_value(stop_table, 'time', config % stop_time, nan, stat)
         if ( (stat < 0) .or. (ieee_is_nan(config % stop_time)) ) then
-            print *, "config .toml stop is missing time or is not a real"
-            print *, "stop_time = ", config % stop_time
+            print *, 'config .toml stop is missing time or is not a real'
+            print *, 'stop_time = ', config % stop_time
             stop
         end if
         config % stop_time = abs(config % stop_time)
 
         config % stop_etol = nan
-        call get_value(stop_table, "etol", config % stop_etol, nan, stat)
+        call get_value(stop_table, 'etol', config % stop_etol, nan, stat)
         if ( (stat < 0) .or. (ieee_is_nan(config % stop_etol)) ) then
-            print *, "config .toml stop is missing time or is not a real"
-            print *, "stop_etol = ", config % stop_etol
+            print *, 'config .toml stop is missing time or is not a real'
+            print *, 'stop_etol = ', config % stop_etol
             stop
         end if
         config % stop_etol = abs(config % stop_etol)
@@ -517,75 +539,75 @@ contains
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: bndry_table
         type(toml_table), pointer              :: side_table
-        type(bndry_ptr_t)                      :: bndry_array(NUM_BNDRY)
-        character(:), allocatable              :: type_name
-        integer(ip)                            :: type_id
+        type(bndry_t), pointer                 :: bndry
+        character(:), allocatable              :: side_name
+        character(:), allocatable              :: cond_name
+        integer(ip)                            :: side_id
+        integer(ip)                            :: cond_id
         integer(ip)                            :: stat
         integer(ip)                            :: i
         real(wp)                               :: nan
         real(wp)                               :: val 
         nan = ieee_value(nan, ieee_quiet_nan)
 
-        call get_value(table, "bndry", bndry_table, .false.)
+        call get_value(table, 'bndry', bndry_table, .false.)
         if (.not. associated(bndry_table) ) then
-            print *, "config .toml missing bndry section"
+            print *, 'config .toml missing bndry section'
             stop
         endif
 
-        bndry_array(1) % ptr => config % bndry_left
-        bndry_array(2) % ptr => config % bndry_right
-        bndry_array(3) % ptr => config % bndry_top
-        bndry_array(4) % ptr => config % bndry_bottom
-
         do i=1,NUM_BNDRY
-            call get_value(bndry_table, BNDRY_NAMES(i), side_table, .false.)
+            side_name = BNDRY_SIDE_NAMES(i)
+            allocate(config % bndry_cond(i) % ptr)
+            bndry => config % bndry_cond(i) % ptr
+            call get_value(bndry_table, side_name, side_table, .false.)
             if (.not. associated(side_table) ) then
-                print *, "config .toml is missing boundary." & 
-                    // trim(BNDRY_NAMES(i))
+                print *, 'config .toml is missing boundary.' // trim(side_name)
                 stop
             endif
-
-            call get_value(side_table, "type", type_name, type_name, stat)
-            if ( .not. allocated(type_name) ) then
-                print *, "config .toml boundry."//trim(BNDRY_NAMES(i))& 
-                    // "type missing"
+            side_id = side_id_from_name(side_name)
+            if (side_id == BNDRY_SIDE_UNKNOWN) then
+                print *, 'config .toml boundry.' // trim(side_name) // ' unknown side_name'
+                print *, 'side_name = ', side_name
                 stop
             end if
-            type_id = bndry_from_string(type_name)
-            if (type_id == BNDRY_COND_UNKNOWN) then
-                print *, "config .toml boundry."//trim(BNDRY_NAMES(i))& 
-                    // " type unknown condition"
-                print *, "type = ", type_name
+            bndry % side_id = side_id
+
+            call get_value(side_table, 'type', cond_name, cond_name, stat)
+            if ( .not. allocated(cond_name) ) then
+                print *, 'config .toml boundry.' // trim(side_name) // 'cond type missing'
                 stop
             end if
-            bndry_array(i) % ptr % id = type_id
+            cond_id = cond_id_from_name(cond_name)
+            if (cond_id == BNDRY_COND_UNKNOWN) then
+                print *, 'config .toml boundry.' // trim(side_name) // ' unknown cond_name'
+                print *, 'cond_name = ', cond_name
+                stop
+            end if
+            bndry % cond_id = cond_id
 
-            select case (type_id)
+            select case (cond_id)
             case (BNDRY_COND_INFLOW, BNDRY_COND_MOVING)
                 val = nan
-                call get_value(side_table, "value", val, nan, stat) 
+                call get_value(side_table, 'value', val, nan, stat) 
                 if ( (stat < 0) .or. (ieee_is_nan(val)) ) then
-                    print *, "config .toml boundary."//trim(BNDRY_NAMES(i))& 
-                        // " is missing "//type_name//" value or is not a real"
-                    print *, "value = ", val 
+                    print *, 'config .toml boundary.' // trim(side_name) // & 
+                        ' is missing ' // cond_name // ' value or is not a real'
+                    print *, 'value = ', val 
                     stop
                 end if
             case default
                 val = 0.0_wp
             end select 
 
-            if ((type_id == BNDRY_COND_INFLOW) .and. (val < 0.0_wp)) then
-                print *, "config .toml boundary."//trim(BNDRY_NAMES(i))&
-                    // " value is < 0"
+            if ((cond_id == BNDRY_COND_INFLOW) .and. (val < 0.0_wp)) then
+                print *, 'config .toml boundary.' // trim(side_name) // & 
+                    ' value is < 0'
                 stop
             end if
 
             ! Set boundary velocity values
-            block
-                type(vector_t) :: v
-                v = get_bndry_velocity(BNDRY_NAMES(i), type_id, val)
-                bndry_array(i) % ptr % velocity = v 
-            end block
+            bndry % velocity = get_bndry_velocity(side_id, cond_id, val)
         end do
 
     end subroutine read_bndry_table
@@ -595,9 +617,9 @@ contains
         character(*), intent(in) :: stop_cond_string
         integer(ip)              :: cstop
         select case (stop_cond_string)
-        case ('time')
+        case ( 'time' )
             cstop = STOP_COND_TIME
-        case ('steady')
+        case ( 'steady' )
             cstop = STOP_COND_STEADY
         case default
             cstop = STOP_COND_UNKNOWN
@@ -609,117 +631,47 @@ contains
         integer(ip), intent(in)   :: cstop
         character(:), allocatable :: stop_cond_string
         select case (cstop)
-        case (STOP_COND_TIME)
-            stop_cond_string = "time"
-        case (STOP_COND_STEADY)
-            stop_cond_string = "steady"
+        case ( STOP_COND_TIME )
+            stop_cond_string = 'time'
+        case ( STOP_COND_STEADY )
+            stop_cond_string = 'steady'
         case default
-            stop_cond_string = "unknown"
+            stop_cond_string = 'unknown'
         end select
     end function stop_cond_to_string
 
-
-    function bndry_from_string(type_string) result(id)
-        character(*), intent(in) :: type_string
-        integer(ip)              :: id
-        select case(type_string)
-        case ("inflow")
-            id = BNDRY_COND_INFLOW
-        case ("moving")
-            id = BNDRY_COND_MOVING
-        case ("outflow")
-            id = BNDRY_COND_OUTFLOW
-        case ("noslip")
-            id = BNDRY_COND_NOSLIP
-        case ("slip")
-            id = BNDRY_COND_SLIP
-        case default
-            id = BNDRY_COND_UNKNOWN
-        end select
-    end function bndry_from_string
-
-
-    function bndry_to_string(type_id) result(type_string)
-        integer(ip), intent(in)   :: type_id
-        character(:), allocatable :: type_string
-        select case(type_id)
-        case (BNDRY_COND_INFLOW)
-            type_string = "inflow"
-        case (BNDRY_COND_MOVING)
-            type_string = "moving"
-        case (BNDRY_COND_OUTFLOW)
-            type_string = "outflow"
-        case (BNDRY_COND_NOSLIP)
-            type_string = "noslip"
-        case (BNDRY_COND_SLIP)
-            type_string = "slip"
-        case default
-            type_string = "unknown"
-        end select
-    end function bndry_to_string
-
-
-    function get_bndry_velocity(bndry_name, type_id, val) result(velocity)
-        character(*), intent(in) :: bndry_name
-        integer(ip), intent(in)  :: type_id
+    function get_bndry_velocity(side_id, cond_id, val) result(velocity)
+        integer(ip), intent(in)  :: side_id
+        integer(ip), intent(in)  :: cond_id
         real(wp), intent(in)     :: val
         type(vector_t)           :: velocity 
         velocity = vector_t(0.0_wp, 0.0_wp)
-        select case (type_id)
-        case (BNDRY_COND_INFLOW)
-            select case(bndry_name)
-            case ("left")
+        select case ( cond_id )
+        case ( BNDRY_COND_INFLOW )
+            select case( side_id )
+            case ( BNDRY_SIDE_LEFT )
                 velocity % x = abs(val)
                 velocity % y = 0.0_wp
-            case ("right")
+            case ( BNDRY_SIDE_RIGHT )
                 velocity % x = -abs(val)
                 velocity % y = 0.0_wp
-            case ("top")
+            case ( BNDRY_SIDE_TOP )
                 velocity % x = 0.0_wp 
                 velocity % y = -abs(val)
-            case ("bottom")
+            case ( BNDRY_SIDE_BOTTOM )
                 velocity % x = 0.0_wp  
                 velocity % y = abs(val)
             end select
-        case (BNDRY_COND_MOVING)
-            select case(bndry_name)
-            case ("left", "right")
+        case ( BNDRY_COND_MOVING )
+            select case(side_id)
+            case ( BNDRY_SIDE_LEFT, BNDRY_SIDE_RIGHT )
                 velocity % x = 0.0_wp 
                 velocity % y = val 
-            case ("top", "bottom")
+            case ( BNDRY_SIDE_TOP, BNDRY_SIDE_BOTTOM )
                 velocity % x = val 
                 velocity % y = 0.0_wp 
             end select
         end select
     end function get_bndry_velocity
-
-
-    function init_id_from_string(init_string) result(init_id)
-        character(*), intent(in) :: init_string
-        integer(ip)              :: init_id
-        select case (init_string)
-        case ('constant')
-            init_id = INIT_COND_CONST
-        case ('file')
-            init_id = INIT_COND_FILE
-        case default
-            init_id = INIT_COND_UNKNOWN
-        end select
-    end function init_id_from_string
-
-
-    function init_id_to_string(init_id) result(init_string)
-        integer(ip), intent(in)   :: init_id
-        character(:), allocatable :: init_string
-        select case (init_id)
-        case (INIT_COND_CONST)
-            init_string = 'constant'
-        case (INIT_COND_FILE)
-            init_string = 'file'
-        case default
-            init_string = 'unknown'
-        end select
-    end function init_id_to_string
-
 
 end module slbm_2d_config

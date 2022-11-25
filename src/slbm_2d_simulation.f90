@@ -43,15 +43,13 @@ contains
         integer(ip) :: iter = 0_ip    ! current iteration number
         logical     :: done = .false. ! flag indicating completion  
 
-        ! Note, make sure to  set initial bc velocities in  constructor
-
         do while ( .not. done )
             call this % incr_iter_time(iter, time)
             call this % predictor(time)
             call this % set_bndry_cond(time)
             call this % corrector(time)
             call this % check_stop_cond(time, done)
-            call this % print_info(iter, time)
+            !call this % print_info(iter, time)
         end do
     end subroutine run
 

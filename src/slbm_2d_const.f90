@@ -14,7 +14,13 @@ module slbm_2d_const
 
     ! Boundary information
     public :: NUM_BNDRY            ! Number of boundries for rect. region
-    public :: BNDRY_NAMES          ! Array of boundary names
+    public :: BNDRY_SIDE_LEFT      ! left boundary id
+    public :: BNDRY_SIDE_RIGHT     ! right boundary id
+    public :: BNDRY_SIDE_TOP       ! top boundary id
+    public :: BNDRY_SIDE_BOTTOM    ! bottom boundary id
+    public :: BNDRY_SIDE_UNKNOWN   ! unknwn boundary id
+    public :: BNDRY_SIDE_NAMES     ! Array of boundary names
+    public :: BNDRY_SIDE_IDS       ! Array of boundary names
 
     ! Boundary condition ids       
     public :: BNDRY_COND_INFLOW    ! Inflow boundary condition
@@ -47,8 +53,19 @@ module slbm_2d_const
 
     ! Boundry number and names
     integer(ip), parameter :: NUM_BNDRY = 4
-    character(len=10)      :: BNDRY_NAMES(NUM_BNDRY) = & 
+    integer(ip), parameter :: BNDRY_SIDE_LEFT    = 1
+    integer(ip), parameter :: BNDRY_SIDE_RIGHT   = 2
+    integer(ip), parameter :: BNDRY_SIDE_TOP     = 3
+    integer(ip), parameter :: BNDRY_SIDE_BOTTOM  = 4
+    integer(ip), parameter :: BNDRY_SIDE_UNKNOWN = 5
+    character(len=10)      :: BNDRY_SIDE_NAMES(NUM_BNDRY) = & 
         [character(len=10) :: 'left', 'right', 'top', 'bottom']
+    integer(ip), parameter :: BNDRY_SIDE_IDS(NUM_BNDRY) = [ & 
+        BNDRY_SIDE_LEFT,    & 
+        BNDRY_SIDE_RIGHT,   &
+        BNDRY_SIDE_TOP,     &
+        BNDRY_SIDE_BOTTOM   &
+        ]
 
     ! Boundary condition ids
     integer(ip), parameter :: BNDRY_COND_INFLOW   = 1
