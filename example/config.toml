@@ -1,7 +1,7 @@
 [mesh]
-ds = 0.01          # mesh spacing
-num_x = 101        # number of x grid points
-num_y = 101        # number of y grid points
+ds = 0.03          # mesh spacing 
+num_x = 301        # number of x grid points
+num_y = 301        # number of y grid points
 
 [fluid]
 kvisc   = 1.0e-4   # kinematic viscosity 

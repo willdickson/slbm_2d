@@ -84,7 +84,8 @@ module slbm_2d_config
 
     contains
         private
-        procedure, public :: pprint => config_pprint
+        procedure, public :: get_bndry => config_get_bndry
+        procedure, public :: pprint    => config_pprint
     end type config_t 
 
     interface config_t
@@ -261,6 +262,14 @@ contains
         end if
 
     end function config_constructor
+
+
+    subroutine config_get_bndry(this, side_id, bndry)
+        class(config_t), intent(in) :: this
+        integer(ip), intent(in)     :: side_id
+        type(bndry_t), pointer      :: bndry
+        bndry => this % bndry_cond(side_id) % ptr
+    end subroutine config_get_bndry
 
 
     subroutine config_pprint(this)

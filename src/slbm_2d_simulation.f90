@@ -3,11 +3,20 @@ module slbm_2d_simulation
     use slbm_2d_kinds,    only : wp, ip
     use slbm_2d_const,    only : CS2
     use slbm_2d_const,    only : CS4
+
     use slbm_2d_const,    only : LATTICE_Q
     use slbm_2d_const,    only : LATTICE_E
     use slbm_2d_const,    only : LATTICE_W
+
+    use slbm_2d_const,    only : BNDRY_SIDE_LEFT
+    use slbm_2d_const,    only : BNDRY_SIDE_RIGHT
+    use slbm_2d_const,    only : BNDRY_SIDE_TOP
+    use slbm_2d_const,    only : BNDRY_SIDE_BOTTOM
+
     use slbm_2d_const,    only : STOP_COND_TIME
     use slbm_2d_const,    only : STOP_COND_STEADY
+
+    use slbm_2d_bndry,    only : bndry_t
     use slbm_2d_config,   only : config_t
     use slbm_2d_vector,   only : vector_t
     use slbm_2d_domain,   only : domain_t
@@ -36,7 +45,7 @@ module slbm_2d_simulation
     interface simulation_t
         procedure simulation_constructor
     end interface simulation_t
-
+    
 contains
 
     function simulation_constructor(config) result(simulation)
@@ -62,14 +71,6 @@ contains
             call this % print_info(iter, time)
         end do
     end subroutine run
-
-
-    subroutine print_info(this, iter, time)
-        class(simulation_t), intent(in) :: this
-        integer(ip), intent(in)         :: iter
-        real(wp), intent(in)            :: time
-        print *, iter, time
-    end subroutine print_info
 
 
     subroutine predictor(this, time)
@@ -107,6 +108,26 @@ contains
     end subroutine predictor
 
 
+    subroutine set_bndry_cond(this, time)
+        class(simulation_t), intent(inout) :: this
+        real(wp), intent(in)               :: time
+        type(bndry_t), pointer             :: bndry
+
+        ! left boundary
+        call this % config % get_bndry(BNDRY_SIDE_LEFT, bndry)
+
+        ! right boundary
+        call this % config % get_bndry(BNDRY_SIDE_RIGHT, bndry)
+
+        ! top boundary
+        call this % config % get_bndry(BNDRY_SIDE_TOP, bndry)
+
+        ! bottom boundary
+        call this % config % get_bndry(BNDRY_SIDE_BOTTOM, bndry)
+
+    end subroutine set_bndry_cond
+
+
     subroutine corrector(this, time)
         class(simulation_t), intent(inout) :: this
         real(wp), intent(in)               :: time
@@ -133,21 +154,6 @@ contains
     end subroutine check_stop_cond
 
 
-    subroutine set_bndry_cond(this, time)
-        class(simulation_t), intent(inout) :: this
-        real(wp), intent(in)               :: time
-
-        ! left boundary
-
-        ! right boundary
-
-        ! top boundary
-
-        ! bottom boundary
-
-    end subroutine set_bndry_cond
-
-
     subroutine incr_iter_time(this, iter, time)
         class(simulation_t), intent(in) :: this
         integer(ip), intent(inout)      :: iter
@@ -155,6 +161,7 @@ contains
         iter = iter + 1_ip
         time = time + (this % config % dt)
     end subroutine incr_iter_time
+
 
     function equilib_func(this, k, i, j) result(equilib)
         class(simulation_t), intent(in), target :: this
@@ -193,6 +200,14 @@ contains
         eu2 = eu**2
         equilib = rho*wt*(1.0_wp + k1*eu + k2*eu2 - k3*uu)
     end function equilib_func
+
+
+    subroutine print_info(this, iter, time)
+        class(simulation_t), intent(in) :: this
+        integer(ip), intent(in)         :: iter
+        real(wp), intent(in)            :: time
+        print *, iter, time
+    end subroutine print_info
 
     
 end module slbm_2d_simulation
