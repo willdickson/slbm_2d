@@ -8,15 +8,26 @@ module slbm_2d_simulation
     use slbm_2d_const,    only : LATTICE_E
     use slbm_2d_const,    only : LATTICE_W
 
+    use slbm_2d_const,    only : NUM_BNDRY
     use slbm_2d_const,    only : BNDRY_SIDE_LEFT
     use slbm_2d_const,    only : BNDRY_SIDE_RIGHT
     use slbm_2d_const,    only : BNDRY_SIDE_TOP
     use slbm_2d_const,    only : BNDRY_SIDE_BOTTOM
+    use slbm_2d_const,    only : BNDRY_SIDE_UNKNOWN
+    use slbm_2d_const,    only : BNDRY_SIDE_NAMES
+    use slbm_2d_const,    only : BNDRY_SIDE_IDS
+
+    use slbm_2d_const,    only : BNDRY_COND_INFLOW
+    use slbm_2d_const,    only : BNDRY_COND_MOVING
+    use slbm_2d_const,    only : BNDRY_COND_OUTFLOW
+    use slbm_2d_const,    only : BNDRY_COND_NOSLIP
+    use slbm_2d_const,    only : BNDRY_COND_SLIP
 
     use slbm_2d_const,    only : STOP_COND_TIME
     use slbm_2d_const,    only : STOP_COND_STEADY
 
     use slbm_2d_bndry,    only : bndry_t
+    use slbm_2d_bndry,    only : side_id_to_name
     use slbm_2d_config,   only : config_t
     use slbm_2d_vector,   only : vector_t
     use slbm_2d_domain,   only : domain_t
@@ -83,7 +94,12 @@ contains
         real(wp), pointer    :: rho(:,:)   ! alias for density 
         real(wp), pointer    :: ux(:,:)    ! alias for velocity x-component
         real(wp), pointer    :: uy(:,:)    ! alias for velocity y-component
+        integer(ip)          :: num_x      ! size of mesh in x dimension
+        integer(ip)          :: num_y      ! size of mesh in y dimension
         integer(ip)          :: i, j, k    ! loop indices
+
+        num_x = this % config % num_x
+        num_y = this % config % num_y
 
         ! Get aliases for equilibrium and predictor values of density and 
         ! the x and y components of the velocity field 
@@ -93,8 +109,8 @@ contains
         uy  => this % domain % velocity % pred % y
 
         ! Perform predictor update
-        do j = 2, (this % config % num_y - 1)
-            do i = 2, (this % config % num_x - 1)
+        do j = 2, num_y-1_ip
+            do i = 2, num_x-1_ip
                 do k = 1, LATTICE_Q 
                     feq(k,i,j) = this % equilib_func(k,i,j) 
                     rho(i,j) = rho(i,j) + feq(k,i,j)
@@ -105,25 +121,81 @@ contains
                 uy(i,j) = uy(i,j)/rho(i,j)
             end do
         end do
+
     end subroutine predictor
 
 
     subroutine set_bndry_cond(this, time)
-        class(simulation_t), intent(inout) :: this
-        real(wp), intent(in)               :: time
-        type(bndry_t), pointer             :: bndry
+        class(simulation_t), intent(inout), target :: this
+        real(wp), intent(in)                       :: time
 
-        ! left boundary
-        call this % config % get_bndry(BNDRY_SIDE_LEFT, bndry)
+        integer(ip)              :: num_x       ! mesh size in x dim
+        integer(ip)              :: num_y       ! mesh size in x dim
+        integer(ip)              :: i1          ! 1st x index
+        integer(ip)              :: i2          ! 2nd x index
+        integer(ip)              :: ik          ! x offset direction index
+        integer(ip)              :: j1          ! 1st y index
+        integer(ip)              :: j2          ! 2nd y index
+        integer(ip)              :: jk          ! y offset direction index
+        integer(ip)              :: side_id     ! boundry side id
+        integer(ip)              :: bindx       ! boundry index
+        type(bndry_t), pointer   :: bndry       ! alias for boundary
+        type(vector_t), pointer  :: u(:,:)      ! alias for velocty
+        real(wp), pointer        :: feq(:,:,:)  ! alias for equilib distribution
+        real(wp), pointer        :: rho(:,:)    ! alias for density 
+        real(wp), pointer        :: rho1(:,:)   ! alias, 1st offset for density 
+        real(wp), pointer        :: rho2(:,:)   ! alias, 2nd offset for density 
 
-        ! right boundary
-        call this % config % get_bndry(BNDRY_SIDE_RIGHT, bndry)
+        num_x = this % config % num_x
+        num_y = this % config % num_y
 
-        ! top boundary
-        call this % config % get_bndry(BNDRY_SIDE_TOP, bndry)
+        u   => this % domain % velocity % pred
+        feq => this % domain % equilib % val
+        rho => this % domain % density % pred
 
-        ! bottom boundary
-        call this % config % get_bndry(BNDRY_SIDE_BOTTOM, bndry)
+        do bindx = 1, NUM_BNDRY 
+
+            ! Get boundary data
+            side_id = BNDRY_SIDE_IDS(bindx)
+            call this % config % get_bndry(side_id, bndry)
+            call bndry % get_indices(num_x, num_y, i1, i2, j1, j2)
+            call bndry % get_offsets(ik, jk)
+
+            ! Set velocity boundary conditions
+            select case (bndry % cond_id)
+            case (BNDRY_COND_INFLOW, BNDRY_COND_MOVING, BNDRY_COND_NOSLIP)
+                u(i1:i2, j1:j2) = bndry % velocity
+            case (BNDRY_COND_OUTFLOW)
+                u(i1:i2, j1:j2) = u(i1+ik:i2+ik, j1+jk:j2+jk)
+            case (BNDRY_COND_SLIP)
+                select case( bndry % side_id)
+                case (BNDRY_SIDE_LEFT, BNDRY_SIDE_RIGHT)
+                    u(i1:i2, j1:j2) % x = 0.0_wp
+                    u(i1:i2, j1:j2) % y = u(i1+ik:i2+ik, j1+jk:j2+jk) % y 
+                case (BNDRY_SIDE_TOP, BNDRY_SIDE_BOTTOM)
+                    u(i1:i2, j1:j2) % x = u(i1+ik:i2+ik, j1+jk:j2+jk) % x 
+                    u(i1:i2, j1:j2) % y = 0.0_wp
+                end select
+            end select
+
+            ! Set equilibrium distribution boundary conditions
+            feq(:,i1:i2, j1:j2) = feq(:,i1+ik:i2+ik, j1+jk:j2+jk)
+
+            ! Set density boundary conditions
+            rho1 => rho( i1+1*ik : i2+1*ik, j1+1*jk : j2+1*jk)
+            rho2 => rho( i1+2*ik : i2+2*ik, j1+2*jk : j2+2*jk) 
+            rho(i1:i2, j1:j2) = (4.0_wp*rho1 - rho2)/3.0_wp
+
+            ! Debug
+            ! ---------------------------------------------------
+            !print *, side_id_to_name(side_id) 
+            !print *, 'side_id     = ', side_id 
+            !print *, 'i1, i2, ik  = ', i1, i2, ik 
+            !print *, 'j1, j2, jk  = ', j1, j2, jk
+            !print *, ''
+            ! ---------------------------------------------------
+        end do
+
 
     end subroutine set_bndry_cond
 
@@ -163,7 +235,7 @@ contains
     end subroutine incr_iter_time
 
 
-    function equilib_func(this, k, i, j) result(equilib)
+    pure function equilib_func(this, k, i, j) result(equilib)
         class(simulation_t), intent(in), target :: this
         integer(ip), intent(in)                 :: k
         integer(ip), intent(in)                 :: i
