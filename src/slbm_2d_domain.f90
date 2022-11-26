@@ -1,4 +1,5 @@
 module slbm_2d_domain
+
     use slbm_2d_kinds,     only : wp, ip
     use slbm_2d_config,    only : config_t
     use slbm_2d_vector,    only : vector_t
@@ -29,7 +30,5 @@ contains
         domain % density  = density_t(config) 
         domain % velocity = velocity_t(config) 
     end function domain_constructor
-
-    
 
 end module slbm_2d_domain

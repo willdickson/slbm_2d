@@ -1,4 +1,5 @@
 module slbm_2d_bndry
+
     use slbm_2d_kinds,  only : wp, ip
 
     use slbm_2d_const,  only : BNDRY_SIDE_LEFT
@@ -124,7 +125,6 @@ contains
             side_id = BNDRY_SIDE_UNKNOWN
         end select
     end function side_id_from_name
-
 
 
 end module slbm_2d_bndry

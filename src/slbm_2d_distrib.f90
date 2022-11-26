@@ -1,7 +1,9 @@
 module slbm_2d_distrib
+
     use slbm_2d_kinds,  only : wp, ip
     use slbm_2d_const,  only : LATTICE_Q
     use slbm_2d_config, only : config_t
+
     implicit none
     private
 
@@ -26,6 +28,7 @@ contains
         distrib % val = 0.0_wp
     end function distrib_constructor
 
+
     subroutine distrib_deallocate(this)
         class(distrib_t), intent(inout) :: this
         if ( allocated(this % val) ) then
@@ -33,9 +36,11 @@ contains
         end if
     end subroutine distrib_deallocate
 
+
     subroutine distrib_destructor(this)
         type(distrib_t), intent(inout) :: this
         call this % deallocate()
     end subroutine distrib_destructor
+
 
 end module slbm_2d_distrib

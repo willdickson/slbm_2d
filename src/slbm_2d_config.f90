@@ -640,6 +640,7 @@ contains
         end select
     end function stop_cond_to_string
 
+
     function get_bndry_velocity(side_id, cond_id, val) result(velocity)
         integer(ip), intent(in)  :: side_id
         integer(ip), intent(in)  :: cond_id
@@ -673,5 +674,6 @@ contains
             end select
         end select
     end function get_bndry_velocity
+
 
 end module slbm_2d_config
