@@ -225,21 +225,21 @@ contains
 
         real(wp), parameter  :: ex(LATTICE_Q) = LATTICE_E % x
         real(wp), parameter  :: ey(LATTICE_Q) = LATTICE_E % y
-        real(wp)             :: tau          ! Relaxation parameter
-        real(wp)             :: feq          ! equilibrium distribution 
-        real(wp), pointer    :: ro_l(:,:)   ! alias for last step density
-        real(wp), pointer    :: ro_p(:,:)   ! alias for pred step density   
-        real(wp), pointer    :: ro_c(:,:)   ! alias for curr step density 
-        real(wp), pointer    :: ux_l(:,:)    ! alias for last step velocity x-component
-        real(wp), pointer    :: uy_l(:,:)    ! alias for last step velocity y-component
-        real(wp), pointer    :: ux_p(:,:)    ! alias for pred step velocity x-component
-        real(wp), pointer    :: uy_p(:,:)    ! alias for pred step velocity y-component
-        real(wp), pointer    :: ux_c(:,:)    ! alias for curr step velocity x-component
-        real(wp), pointer    :: uy_c(:,:)    ! alias for curr step velocity y-component
-        integer(ip)          :: num_x        ! size of mesh in x dimension
-        integer(ip)          :: num_y        ! size of mesh in y dimension
-        integer(ip)          :: i, j, k      ! loop indices
-        integer(ip)          :: ie, je       
+        real(wp), pointer    :: ro_l(:,:)  ! alias for last step density
+        real(wp), pointer    :: ro_p(:,:)  ! alias for pred step density   
+        real(wp), pointer    :: ro_c(:,:)  ! alias for curr step density 
+        real(wp), pointer    :: ux_l(:,:)  ! alias for last step velocity x-component
+        real(wp), pointer    :: uy_l(:,:)  ! alias for last step velocity y-component
+        real(wp), pointer    :: ux_p(:,:)  ! alias for pred step velocity x-component
+        real(wp), pointer    :: uy_p(:,:)  ! alias for pred step velocity y-component
+        real(wp), pointer    :: ux_c(:,:)  ! alias for curr step velocity x-component
+        real(wp), pointer    :: uy_c(:,:)  ! alias for curr step velocity y-component
+        real(wp)             :: tau        ! Relaxation parameter
+        real(wp)             :: feq        ! equilibrium distribution 
+        integer(ip)          :: num_x      ! size of mesh in x dimension
+        integer(ip)          :: num_y      ! size of mesh in y dimension
+        integer(ip)          :: i, j, k    ! loop indices
+        integer(ip)          :: ie, je     
 
         ! Get mesh size along x and y dimensions
         tau   = this % config % tau
