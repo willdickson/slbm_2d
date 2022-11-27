@@ -6,8 +6,9 @@ module slbm_2d_density
     private
 
     type, public :: density_t
-        real(wp), allocatable :: curr(:,:)
+        real(wp), allocatable :: last(:,:)
         real(wp), allocatable :: pred(:,:)
+        real(wp), allocatable :: curr(:,:)
 
     contains
         private
@@ -26,8 +27,9 @@ contains
     function density_constructor(config) result(density)
         type(config_t), intent(in) :: config
         type(density_t)            :: density
-        allocate(density % curr(config % num_x, config % num_y))
+        allocate(density % last(config % num_x, config % num_y))
         allocate(density % pred(config % num_x, config % num_y))
+        allocate(density % curr(config % num_x, config % num_y))
         call density % set_initial_cond(config)
     end function density_constructor
 
@@ -35,8 +37,9 @@ contains
     subroutine set_initial_cond(this, config)
         class(density_t), intent(inout) :: this
         type(config_t), intent(in)      :: config
-        this % curr = config % density
+        this % last = 0.0_wp
         this % pred = 0.0_wp
+        this % curr = config % density
     end subroutine set_initial_cond
 
 

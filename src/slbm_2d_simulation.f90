@@ -31,12 +31,14 @@ module slbm_2d_simulation
     use slbm_2d_config,   only : config_t
     use slbm_2d_vector,   only : vector_t
     use slbm_2d_domain,   only : domain_t
-    use slbm_2d_distrib,  only : distrib_t
     use slbm_2d_density,  only : density_t
     use slbm_2d_velocity, only : velocity_t
 
     implicit none
     private
+
+    integer(ip), parameter :: PRED_STEP = 1
+    integer(ip), parameter :: CORR_STEP = 2
 
     type, public :: simulation_t
         type(config_t)  :: config  ! configuration data
@@ -76,8 +78,9 @@ contains
         do while ( .not. done )
             call this % incr_iter_time(iter, time)
             call this % predictor(time)
-            call this % set_bndry_cond(time)
+            call this % set_bndry_cond(time, PRED_STEP)
             call this % corrector(time)
+            call this % set_bndry_cond(time, CORR_STEP)
             call this % check_stop_cond(time, done)
             call this % print_info(iter, time)
         end do
@@ -90,44 +93,62 @@ contains
 
         real(wp), parameter  :: ex(LATTICE_Q) = LATTICE_E % x
         real(wp), parameter  :: ey(LATTICE_Q) = LATTICE_E % y
-        real(wp), pointer    :: feq(:,:,:) ! alias for equilibrium distribution
-        real(wp), pointer    :: rho(:,:)   ! alias for density 
-        real(wp), pointer    :: ux(:,:)    ! alias for velocity x-component
-        real(wp), pointer    :: uy(:,:)    ! alias for velocity y-component
+        real(wp)             :: feq        ! equilibrium distribution
+        real(wp), pointer    :: rho_l(:,:) ! alias for last density
+        real(wp), pointer    :: rho_p(:,:) ! alias for pred density 
+        real(wp), pointer    :: rho_c(:,:) ! alias for curr density 
+        real(wp), pointer    :: ux_l(:,:)  ! alias for last velocity x-component
+        real(wp), pointer    :: uy_l(:,:)  ! alias for last velocity y-component
+        real(wp), pointer    :: ux_p(:,:)  ! alias for pred velocity x-component
+        real(wp), pointer    :: uy_p(:,:)  ! alias for pred velocity y-component
+        real(wp), pointer    :: ux_c(:,:)  ! alias for curr velocity x-component
+        real(wp), pointer    :: uy_c(:,:)  ! alias for curr velocity y-component
         integer(ip)          :: num_x      ! size of mesh in x dimension
         integer(ip)          :: num_y      ! size of mesh in y dimension
         integer(ip)          :: i, j, k    ! loop indices
 
+        ! Get mesh size along x and y dimensions
         num_x = this % config % num_x
         num_y = this % config % num_y
 
         ! Get aliases for equilibrium and predictor values of density and 
         ! the x and y components of the velocity field 
-        feq => this % domain % equilib % val
-        rho => this % domain % density % pred
-        ux  => this % domain % velocity % pred % x
-        uy  => this % domain % velocity % pred % y
+        rho_l => this % domain % density % last
+        rho_p => this % domain % density % pred
+        rho_c => this % domain % density % curr 
+
+        ux_l  => this % domain % velocity % last % x
+        ux_p  => this % domain % velocity % pred % x
+        ux_c  => this % domain % velocity % curr % x
+
+        uy_l  => this % domain % velocity % last % y
+        uy_c  => this % domain % velocity % curr % y
+        uy_p  => this % domain % velocity % pred % y
 
         ! Perform predictor update
         do j = 2, num_y-1_ip
             do i = 2, num_x-1_ip
+                rho_l(i,j) = rho_c(i,j)
+                ux_l(i,j)  = ux_c(i,j)
+                uy_l(i,j)  = uy_c(i,j)
                 do k = 1, LATTICE_Q 
-                    feq(k,i,j) = this % equilib_func(k,i,j) 
-                    rho(i,j) = rho(i,j) + feq(k,i,j)
-                    ux(i,j)  = ux(i,j)  + feq(k,i,j)*ex(k)
-                    uy(i,j)  = uy(i,j)  + feq(k,i,j)*ey(k)
+                    feq = this % equilib_func(k,i,j,PRED_STEP) 
+                    rho_p(i,j) = rho_p(i,j) + feq
+                    ux_p(i,j)  = ux_p(i,j)  + feq*ex(k)
+                    uy_p(i,j)  = uy_p(i,j)  + feq*ey(k)
                 end do
-                ux(i,j) = ux(i,j)/rho(i,j)
-                uy(i,j) = uy(i,j)/rho(i,j)
+                ux_p(i,j) = ux_p(i,j)/rho_p(i,j)
+                uy_p(i,j) = uy_p(i,j)/rho_p(i,j)
             end do
         end do
 
     end subroutine predictor
 
 
-    subroutine set_bndry_cond(this, time)
+    subroutine set_bndry_cond(this, time, step)
         class(simulation_t), intent(inout), target :: this
         real(wp), intent(in)                       :: time
+        integer(ip), intent(in)                    :: step
 
         integer(ip)              :: num_x       ! mesh size in x dim
         integer(ip)              :: num_y       ! mesh size in x dim
@@ -141,7 +162,6 @@ contains
         integer(ip)              :: bindx       ! boundry index
         type(bndry_t), pointer   :: bndry       ! alias for boundary
         type(vector_t), pointer  :: u(:,:)      ! alias for velocty
-        real(wp), pointer        :: feq(:,:,:)  ! alias for equilib distribution
         real(wp), pointer        :: rho(:,:)    ! alias for density 
         real(wp), pointer        :: rho1(:,:)   ! alias, 1st offset for density 
         real(wp), pointer        :: rho2(:,:)   ! alias, 2nd offset for density 
@@ -149,12 +169,16 @@ contains
         num_x = this % config % num_x
         num_y = this % config % num_y
 
-        u   => this % domain % velocity % pred
-        feq => this % domain % equilib % val
-        rho => this % domain % density % pred
+        select case (step)
+        case (PRED_STEP)
+            u   => this % domain % velocity % pred
+            rho => this % domain % density % pred
+        case (CORR_STEP)
+            u   => this % domain % velocity % curr
+            rho => this % domain % density % curr 
+        end select
 
         do bindx = 1, NUM_BNDRY 
-
             ! Get boundary data
             side_id = BNDRY_SIDE_IDS(bindx)
             call this % config % get_bndry(side_id, bndry)
@@ -178,32 +202,69 @@ contains
                 end select
             end select
 
-            ! Set equilibrium distribution boundary conditions
-            feq(:,i1:i2, j1:j2) = feq(:,i1+ik:i2+ik, j1+jk:j2+jk)
-
             ! Set density boundary conditions
             rho1 => rho( i1+1*ik : i2+1*ik, j1+1*jk : j2+1*jk)
             rho2 => rho( i1+2*ik : i2+2*ik, j1+2*jk : j2+2*jk) 
             rho(i1:i2, j1:j2) = (4.0_wp*rho1 - rho2)/3.0_wp
-
-            ! Debug
-            ! ---------------------------------------------------
-            !print *, side_id_to_name(side_id) 
-            !print *, 'side_id     = ', side_id 
-            !print *, 'i1, i2, ik  = ', i1, i2, ik 
-            !print *, 'j1, j2, jk  = ', j1, j2, jk
-            !print *, ''
-            ! ---------------------------------------------------
         end do
-
-
     end subroutine set_bndry_cond
 
 
     subroutine corrector(this, time)
-        class(simulation_t), intent(inout) :: this
-        real(wp), intent(in)               :: time
-        !print *, 'corrector' 
+        class(simulation_t), intent(inout), target :: this
+        real(wp), intent(in)                       :: time
+
+        real(wp), parameter  :: ex(LATTICE_Q) = LATTICE_E % x
+        real(wp), parameter  :: ey(LATTICE_Q) = LATTICE_E % y
+        real(wp)             :: tau          ! Relaxation parameter
+        real(wp)             :: feq          ! equilibrium distribution 
+        real(wp), pointer    :: rho_l(:,:)   ! alias for last step density
+        real(wp), pointer    :: rho_p(:,:)   ! alias for pred step density   
+        real(wp), pointer    :: rho_c(:,:)   ! alias for curr step density 
+        real(wp), pointer    :: ux_l(:,:)    ! alias for last step velocity x-component
+        real(wp), pointer    :: uy_l(:,:)    ! alias for last step velocity y-component
+        real(wp), pointer    :: ux_p(:,:)    ! alias for pred step velocity x-component
+        real(wp), pointer    :: uy_p(:,:)    ! alias for pred step velocity y-component
+        real(wp), pointer    :: ux_c(:,:)    ! alias for curr step velocity x-component
+        real(wp), pointer    :: uy_c(:,:)    ! alias for curr step velocity y-component
+        integer(ip)          :: num_x        ! size of mesh in x dimension
+        integer(ip)          :: num_y        ! size of mesh in y dimension
+        integer(ip)          :: i, j, k      ! loop indices
+
+        ! Get mesh size along x and y dimensions
+        tau   = this % config % tau
+        num_x = this % config % num_x
+        num_y = this % config % num_y
+
+        ! Get aliases for equilibrium and predictor values of density and 
+        ! the x and y components of the velocity field 
+        rho_l => this % domain % density % last 
+        rho_p => this % domain % density % pred
+        rho_c => this % domain % density % curr 
+
+        ux_l  => this % domain % velocity % last % x
+        ux_p  => this % domain % velocity % pred % x
+        ux_c  => this % domain % velocity % curr % x
+
+        uy_l  => this % domain % velocity % last % y
+        uy_p  => this % domain % velocity % pred % y
+        uy_c  => this % domain % velocity % curr % y
+
+        do j = 2, num_y-1
+            do i = 2, num_x-1
+                ux_c(i,j) = rho_p(i,j)*ux_p(i,j)
+                uy_c(i,j) = rho_p(i,j)*uy_p(i,j)
+                do k = 1, LATTICE_Q
+                    feq = this % equilib_func(k,i,j,CORR_STEP)
+                    ux_c(i,j) = ux_c(i,j) + (tau - 1.0_wp)*ex(k)*feq
+                    uy_c(i,j) = uy_c(i,j) + (tau - 1.0_wp)*ey(k)*feq
+                end do
+                ux_c(i,j) = (ux_c(i,j) - (1.0_wp - tau)*rho_l(i,j)*ux_l(i,j))/rho_p(i,j) 
+                uy_c(i,j) = (uy_c(i,j) - (1.0_wp - tau)*rho_l(i,j)*uy_l(i,j))/rho_p(i,j) 
+                rho_c(i,j) = rho_p(i,j)
+            end do
+        end do
+
     end subroutine corrector
 
 
@@ -235,11 +296,12 @@ contains
     end subroutine incr_iter_time
 
 
-    pure function equilib_func(this, k, i, j) result(equilib)
+    pure function equilib_func(this, k, i, j, step) result(equilib)
         class(simulation_t), intent(in), target :: this
         integer(ip), intent(in)                 :: k
         integer(ip), intent(in)                 :: i
         integer(ip), intent(in)                 :: j
+        integer(ip), intent(in)                 :: step
         real(wp)                                :: equilib 
 
         ! Constant used in equilibrium calculation
@@ -257,9 +319,17 @@ contains
         real(wp)             :: eu  ! lattice velocity (ex,ey) to velocity (ux,uy)
         real(wp)             :: eu2 ! square of eu
 
-        ! Get, velocity vector components
-        ux = this % domain % velocity % curr(i,j) % x
-        uy = this % domain % velocity % curr(i,j) % y
+        ! Get denisty and velocity vector components
+        select case (step)
+        case (PRED_STEP)
+            rho = this % domain % density % curr(i,j)
+            ux  = this % domain % velocity % curr(i,j) % x
+            uy  = this % domain % velocity % curr(i,j) % y
+        case (CORR_STEP)
+            rho = this % domain % density % pred(i,j)
+            ux  = this % domain % velocity % pred(i,j) % x
+            uy  = this % domain % velocity % pred(i,j) % y
+        end select
 
         ! Get lattice velocity components and weight
         ex = LATTICE_E(k) % x

@@ -24,8 +24,9 @@ module slbm_2d_velocity
     private
 
     type, public :: velocity_t
-        type(vector_t), allocatable :: curr(:,:)
+        type(vector_t), allocatable :: last(:,:)
         type(vector_t), allocatable :: pred(:,:)
+        type(vector_t), allocatable :: curr(:,:)
     contains
         private
         procedure, public  :: set_initial_cond
@@ -42,8 +43,9 @@ contains
     function velocity_constructor(config) result(velocity)
         type(config_t), intent(in) :: config
         type(velocity_t)        :: velocity
-        allocate(velocity % curr(config % num_x, config % num_y))
+        allocate(velocity % last(config % num_x, config % num_y))
         allocate(velocity % pred(config % num_x, config % num_y))
+        allocate(velocity % curr(config % num_x, config % num_y))
         call velocity % set_initial_cond(config)
     end function velocity_constructor
 
@@ -56,8 +58,9 @@ contains
         ! Initialize velocity field
         select type(init => config % init)
         class is (init_const_t)
-            this % curr = init % velocity
+            this % last = vector_t(0.0_wp, 0.0_wp)
             this % pred = vector_t(0.0_wp, 0.0_wp)
+            this % curr = init % velocity
         class is (init_file_t)
             print *, "setting initial cond. from file net implemented yet"
             stop
