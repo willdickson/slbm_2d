@@ -1,7 +1,11 @@
 [mesh]
 ds = 0.001        # mesh spacing 
-num_x = 101        # number of x grid points
-num_y = 101        # number of y grid points
+num_x = 101       # number of x grid points
+num_y = 101       # number of y grid points
+
+[save]
+step = 100
+filename = 'data.h5'
 
 [fluid]
 kvisc   = 2.0e-4   # kinematic viscosity 

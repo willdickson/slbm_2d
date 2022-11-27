@@ -235,9 +235,9 @@ contains
                     feq = this % equilib_func(k,i,j,PRED_STATE)
                     curr % u(i,j) = curr % u(i,j) + (tau-1.0_wp) * LATTICE_E(k)*feq
                 end do
-                curr % u(i,j)   = curr % u(i,j) - (tau-1.0_wp) * last % rho(i,j) * last % u(i,j)
-                curr % u(i,j)   = curr % u(i,j) / pred % rho(i,j)
                 curr % rho(i,j) = pred % rho(i,j)
+                curr % u(i,j)   = curr % u(i,j) - (tau-1.0_wp) * last % rho(i,j) * last % u(i,j)
+                curr % u(i,j)   = curr % u(i,j) / curr % rho(i,j)
             end do
         end do
 
