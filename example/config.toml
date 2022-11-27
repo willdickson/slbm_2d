@@ -1,15 +1,15 @@
 [mesh]
-ds = 0.03          # mesh spacing 
-num_x = 301        # number of x grid points
-num_y = 301        # number of y grid points
+ds = 0.001        # mesh spacing 
+num_x = 101        # number of x grid points
+num_y = 101        # number of y grid points
 
 [fluid]
-kvisc   = 1.0e-4   # kinematic viscosity 
+kvisc   = 2.0e-4   # kinematic viscosity 
 density = 1.0      # reference density  
 
 [init]
 type = 'constant'
-velocity.x = 0.1
+velocity.x = 0.0
 velocity.y = 0.0
 
 [bndry.left]
@@ -30,6 +30,7 @@ value = 0.1
 type = 'noslip'
 
 [stop]       
-cond  = "time"      # termination critera
+#cond  = "time"     # termination critera
+cond  = "steady"    # termination critera
 time  = 10.0        # simulation stop time
 etol  = 1.0e-5      # error tolerance for steady state  (optional)
