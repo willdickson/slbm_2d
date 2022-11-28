@@ -107,18 +107,6 @@ contains
     end subroutine run
 
 
-    subroutine check_save_dir(this)
-        class(simulation_t), intent(in) :: this
-    end subroutine check_save_dir
-
-
-    subroutine save_data(this, iter, time)
-        class(simulation_t), intent(in) :: this
-        integer(ip), intent(in)         :: iter
-        real(wp), intent(in)            :: time
-    end subroutine save_data
-
-
     subroutine predictor(this)
         class(simulation_t), intent(inout), target :: this
 
@@ -176,7 +164,6 @@ contains
         type(bndry_t), pointer   :: bndry       ! alias for boundary
         real(wp), pointer        :: rho1(:,:)   ! alias, 1st offset for density 
         real(wp), pointer        :: rho2(:,:)   ! alias, 2nd offset for density 
-
 
         select case(state_id)
         case (LAST_STATE)
@@ -374,6 +361,44 @@ contains
     end subroutine steady_conv_test
 
 
+    subroutine check_save_dir(this)
+        class(simulation_t), intent(in) :: this
+        character(:), allocatable       :: cmd
+        cmd = 'mkdir -p ' // this % config % save_dir
+        call execute_command_line(cmd)
+    end subroutine check_save_dir
+
+
+    subroutine save_data(this, iter, time)
+        class(simulation_t), intent(in) :: this
+        integer(ip), intent(in)         :: iter
+
+        integer(ip), parameter          :: num_item = 3 
+        integer(ip), save               :: save_cnt = 0_ip
+        integer(ip)                     :: num_x
+        integer(ip)                     :: num_y
+        real(wp), intent(in)            :: time
+        real(wp), allocatable           :: out_data(:,:,:)
+        character(:), allocatable       :: save_cnt_str
+        character(:), allocatable       :: out_filename
+
+        if ( modulo(iter, this % config % save_nstep) == 0) then
+            save_cnt = save_cnt + 1
+            num_x = this % config % num_x
+            num_y = this % config % num_y
+            allocate(out_data(num_item, num_x, num_y))
+            out_data(1,:,:) = this % curr % rho * CS2 ! pressure
+            out_data(2,:,:) = this % curr % u % x     ! velocity x-comp
+            out_data(3,:,:) = this % curr % u % y     ! velocity y-comp
+            save_cnt_str = get_save_cnt_str(save_cnt)
+            out_filename = this % config % save_dir // '/data_' // save_cnt_str // '.npy'
+            call save_npy(out_filename, out_data)
+            print *, 'saving ' // out_filename
+        end if
+
+    end subroutine save_data
+
+
     subroutine print_info(this, iter, time, serr)
         class(simulation_t), intent(in) :: this
         integer(ip), intent(in)         :: iter
@@ -386,5 +411,23 @@ contains
         end if
     end subroutine print_info
     
+
+    function get_save_cnt_str(cnt) result(res)
+        integer,intent(in)        :: cnt
+        character(:),allocatable  :: res
+        character(range(cnt)+2)   :: tmp
+        write(tmp,'(i6.6)') cnt 
+        res = trim(tmp)
+    end function
+
+
+    function itoa(i) result(res)
+        integer,intent(in)        :: i
+        character(:),allocatable  :: res
+        character(range(i)+2)     :: tmp
+        write(tmp,'(i0)') i
+        res = trim(tmp)
+    end function
+
 
 end module slbm_2d_simulation
