@@ -63,11 +63,14 @@ module slbm_2d_config
         real(wp)    :: kvisc      = 0.0_wp ! kinematic viscosity 
         real(wp)    :: density    = 0.0_wp ! reference density
 
-
         ! Stopping conditon parameters
         real(wp)    :: stop_time  = 0.0_wp ! simulation stop time
         real(wp)    :: stop_etol  = 0.0_wp ! simulation (steady) stop err tol.
         integer(ip) :: stop_cond  = STOP_COND_TIME 
+
+        ! Save parameters
+        integer(ip) :: save_nstep = 0_ip         ! time steps betwen saves 
+        character(:),  allocatable  :: save_dir  ! directory for data files 
 
         ! Array of bndry conditions for easy looping
         type(bndry_ptr_t) :: bndry_cond(NUM_BNDRY) 
@@ -136,9 +139,10 @@ contains
         !Read values from  sub-tables
         call read_mesh_table(config, table_ptr)
         call read_fluid_table(config, table_ptr)
-        call read_init_table(config, table_ptr)
-        call read_bndry_table(config, table_ptr)
         call read_stop_table(config, table_ptr)
+        call read_bndry_table(config, table_ptr)
+        call read_init_table(config, table_ptr)
+        call read_save_table(config, table_ptr)
 
         ! Set derivied values
         config % dt = config % ds 
@@ -275,7 +279,7 @@ contains
     subroutine config_pprint(this)
         class(config_t), intent(in), target :: this
         print *, ''
-        print *, 'grid parameters'
+        print *, 'mesh parameters'
         print *, '---------------------------------------------'
         print *, 'num_x     = ', this % num_x
         print *, 'num_y     = ', this % num_y
@@ -329,6 +333,12 @@ contains
         class default
             print *, 'value display not implemented'
         end select
+        print *, ''
+        print *, 'save parameters'
+        print *, '---------------------------------------------'
+        print *, 'nstep     = ', this % save_nstep
+        print *, 'directory = ', this % save_dir
+
         print *, ''
         print *, 'derived parameters'
         print *, '---------------------------------------------'
@@ -542,10 +552,42 @@ contains
         config % stop_etol = abs(config % stop_etol)
     end subroutine read_stop_table
 
+    subroutine read_save_table(config, table)
+        type(config_t), target, intent(inout)  :: config
+        type(toml_table), pointer, intent(in)  :: table
+
+        type(toml_table), pointer              :: save_table
+        character(:), allocatable              :: save_dir
+        integer(ip)                            :: stat
+
+        call get_value(table, 'save', save_table, .false.)
+        if (.not. associated(save_table) ) then
+            print *, 'config .toml missing save section'
+            stop
+        endif
+
+        config % save_nstep = -1_ip
+        call get_value(save_table, 'nstep', config % save_nstep, -1_ip, stat)
+        if ( (stat < 0) .or. (config % num_x < 0) ) then
+            print *, 'config .toml save is missing nstep or value is negative'
+            print *, 'nstep = ', config % save_nstep 
+            stop
+        end if
+
+        call get_value(save_table, 'directory', save_dir, save_dir) 
+        if ( .not. allocated(save_dir) ) then
+            print *, 'config .toml save is missing directory or it is not a string'
+            stop
+        end if
+        config % save_dir = save_dir
+
+    end subroutine read_save_table
+
 
     subroutine read_bndry_table(config, table)
         type(config_t), target, intent(inout)  :: config
         type(toml_table), pointer, intent(in)  :: table
+
         type(toml_table), pointer              :: bndry_table
         type(toml_table), pointer              :: side_table
         type(bndry_t), pointer                 :: bndry

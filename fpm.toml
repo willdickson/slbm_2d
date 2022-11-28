@@ -15,3 +15,6 @@ library = false
 
 [dependencies]
 toml-f.git = "https://github.com/toml-f/toml-f.git"
+stdlib.git = "https://github.com/fortran-lang/stdlib.git"
+stdlib.branch = "stdlib-fpm"
+M_system.git = "https://github.com/urbanjost/M_system.git"

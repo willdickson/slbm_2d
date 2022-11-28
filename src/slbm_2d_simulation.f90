@@ -34,6 +34,8 @@ module slbm_2d_simulation
     use slbm_2d_vector,   only : dot
     use slbm_2d_vector,   only : mag 
 
+    use stdlib_io_npy,    only : save_npy
+
     implicit none
     private
 
@@ -56,6 +58,8 @@ module slbm_2d_simulation
         procedure          :: check_stop_cond
         procedure          :: equilib_func
         procedure          :: steady_conv_test
+        procedure          :: check_save_dir
+        procedure          :: save_data
         procedure          :: print_info
     end type simulation_t
 
@@ -88,6 +92,8 @@ contains
         real(wp)    :: time  = 0.0_wp  ! current time in the simulation
         real(wp)    :: serr  = 0.0_wp  ! steady state error  
 
+        call this % check_save_dir()
+
         do while ( .not. done )
             call this % incr_time(iter, time)
             call this % predictor()
@@ -95,9 +101,22 @@ contains
             call this % corrector()
             call this % set_bndry_cond(CURR_STATE)
             call this % check_stop_cond(time, done, serr)
+            call this % save_data(iter, time)
             call this % print_info(iter, time, serr)
         end do
     end subroutine run
+
+
+    subroutine check_save_dir(this)
+        class(simulation_t), intent(in) :: this
+    end subroutine check_save_dir
+
+
+    subroutine save_data(this, iter, time)
+        class(simulation_t), intent(in) :: this
+        integer(ip), intent(in)         :: iter
+        real(wp), intent(in)            :: time
+    end subroutine save_data
 
 
     subroutine predictor(this)

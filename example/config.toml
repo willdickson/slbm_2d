@@ -4,8 +4,8 @@ num_x = 101       # number of x grid points
 num_y = 101       # number of y grid points
 
 [save]
-step = 100
-filename = 'data.h5'
+nstep = 100
+directory = 'data'
 
 [fluid]
 kvisc   = 2.0e-4   # kinematic viscosity 
