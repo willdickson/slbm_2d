@@ -236,7 +236,7 @@ contains
 
         do j = 2, num_y-1
             do i = 2, num_x-1
-                curr % u(i,j) = last % rho(i,j) * pred % u(i,j)
+                curr % u(i,j) = pred % rho(i,j) * pred % u(i,j)
                 do k = 1, LATTICE_Q
                     feq = this % equilib_func(k,i,j,PRED_STATE)
                     curr % u(i,j) = curr % u(i,j) + (tau-1.0_wp) * LATTICE_E(k)*feq

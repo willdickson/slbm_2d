@@ -1,15 +1,15 @@
 [mesh]
-ds = 0.001        # mesh spacing 
-num_x = 101       # number of x grid points
-num_y = 101       # number of y grid points
+ds = 0.004        # mesh spacing 
+num_x = 251       # number of x grid points
+num_y = 251       # number of y grid points
 
 [save]
-nstep = 100
+nstep = 500
 directory = 'data'
 
 [fluid]
-kvisc   = 2.0e-4   # kinematic viscosity 
-density = 1.0      # reference density  
+kvisc   = 1.3333e-5 # kinematic viscosity 
+density = 1.0       # reference density  
 
 [init]
 type = 'constant'
@@ -17,16 +17,12 @@ velocity.x = 0.0
 velocity.y = 0.0
 
 [bndry.left]
-#type = 'inflow'
-#value = 0.1
 type = 'noslip'
 
 [bndry.right]
-#type = 'outflow'
 type = 'noslip'
 
 [bndry.top]
-#type = 'noslip'
 type ='moving'
 value = 0.1
 

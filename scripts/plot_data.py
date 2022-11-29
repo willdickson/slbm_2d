@@ -15,7 +15,7 @@ uy = data[2,:,:]
 
 fig, ax = plt.subplots(1,1)
 ax.quiver(ux,uy)
-ax.axis('equal')
+#ax.axis('equal')
 plt.show()
 
 
