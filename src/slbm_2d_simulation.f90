@@ -366,6 +366,8 @@ contains
         character(:), allocatable       :: cmd
         cmd = 'mkdir -p ' // this % config % save_dir
         call execute_command_line(cmd)
+        cmd = 'rm ' // this % config % save_dir // "/*.npy"
+        call execute_command_line(cmd)
     end subroutine check_save_dir
 
 
