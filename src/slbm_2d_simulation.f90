@@ -138,7 +138,7 @@ contains
                 do k = 1, LATTICE_Q 
                     feq = this % equilib_func(k,i,j,CURR_STATE)
                     pred % rho(i,j) = pred % rho(i,j) + feq
-                    pred % u(i,j)   = pred % u(i,j)*LATTICE_E(k)
+                    pred % u(i,j)   = pred % u(i,j)   + feq*LATTICE_E(k)
                 end do
                 pred % u(i,j) = pred % u(i,j) / pred % rho(i,j)
             end do
