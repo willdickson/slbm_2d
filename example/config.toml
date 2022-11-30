@@ -4,7 +4,7 @@ num_x = 251          # number of x grid points
 num_y = 251          # number of y grid points
 
 [save]
-nstep = 500
+nstep = 100 
 directory = 'data'
 
 [fluid]

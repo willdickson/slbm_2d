@@ -43,6 +43,11 @@ module slbm_2d_simulation
     integer(ip), parameter :: PRED_STATE = 2
     integer(ip), parameter :: CURR_STATE = 3
 
+    ! Constant used in equilibrium calculation
+    real(wp), parameter  :: A1 = 1.0_wp/CS2
+    real(wp), parameter  :: A2 = 1.0_wp/(2.0_wp*CS4)
+    real(wp), parameter  :: A3 = 1.0_wp/(2.0_wp*CS2)
+
     type, public :: simulation_t
         type(config_t)  :: config  ! configuration data
         type(state_t)   :: last    ! state from last step
@@ -56,7 +61,6 @@ module slbm_2d_simulation
         procedure          :: predictor
         procedure          :: corrector
         procedure          :: check_stop_cond
-        procedure          :: equilib_func
         procedure          :: steady_conv_test
         procedure          :: check_save_dir
         procedure          :: save_data
@@ -118,6 +122,7 @@ contains
         integer(ip)            :: num_x    ! size of mesh in x dimension
         integer(ip)            :: num_y    ! size of mesh in y dimension
         integer(ip)            :: i, j, k  ! loop indices
+        integer(ip)            :: ie, je 
 
         ! Get aliases for last, pred and curr states (less verbose)
         last => this % last
@@ -130,19 +135,21 @@ contains
 
         ! Perform predictor update
         pred = 0.0_wp
-
         do j = 2, num_y-1_ip
             do i = 2, num_x-1_ip
                 last % rho(i,j) = curr % rho(i,j)
                 last % u(i,j)   = curr % u(i,j)
                 do k = 1, LATTICE_Q 
-                    feq = this % equilib_func(k,i,j,CURR_STATE)
+                    ie = i - nint(LATTICE_E(k) % x)
+                    je = j - nint(LATTICE_E(k) % y)
+                    feq = equilib_func(curr % rho(ie,je), curr % u(ie,je), k)
                     pred % rho(i,j) = pred % rho(i,j) + feq
                     pred % u(i,j)   = pred % u(i,j)   + feq*LATTICE_E(k)
                 end do
                 pred % u(i,j) = pred % u(i,j) / pred % rho(i,j)
             end do
         end do
+        !stop
     end subroutine predictor
 
 
@@ -205,8 +212,8 @@ contains
             end select
 
             ! Set density boundary conditions
-            rho1 => s % rho( i1+1*ik : i2+1*ik, j1+1*jk : j2+1*jk)
-            rho2 => s % rho( i1+2*ik : i2+2*ik, j1+2*jk : j2+2*jk) 
+            rho1 => s % rho(i1+1*ik : i2+1*ik, j1+1*jk : j2+1*jk)
+            rho2 => s % rho(i1+2*ik : i2+2*ik, j1+2*jk : j2+2*jk) 
             s % rho(i1:i2, j1:j2) = (4.0_wp*rho1 - rho2)/3.0_wp
         end do
     end subroutine set_bndry_cond
@@ -223,6 +230,7 @@ contains
         integer(ip)            :: num_x      ! size of mesh in x dimension
         integer(ip)            :: num_y      ! size of mesh in y dimension
         integer(ip)            :: i, j, k    ! loop indices
+        integer(ip)            :: ie, je
 
         ! Get aliases for last, pred and curr states (less verbose)
         last => this % last
@@ -238,7 +246,9 @@ contains
             do i = 2, num_x-1
                 curr % u(i,j) = pred % rho(i,j) * pred % u(i,j)
                 do k = 1, LATTICE_Q
-                    feq = this % equilib_func(k,i,j,PRED_STATE)
+                    ie = i + nint(LATTICE_E(k) % x)
+                    je = j + nint(LATTICE_E(k) % y)
+                    feq = equilib_func(pred % rho(ie,je), pred % u(ie,je), k)
                     curr % u(i,j) = curr % u(i,j) + (tau-1.0_wp) * LATTICE_E(k)*feq
                 end do
                 curr % rho(i,j) = pred % rho(i,j)
@@ -282,51 +292,6 @@ contains
         time = time + (this % config % dt)
     end subroutine incr_time
 
-
-    function equilib_func(this, k, i, j, state_id) result(equilib)
-        class(simulation_t), intent(in), target :: this
-        integer(ip), intent(in)                 :: k
-        integer(ip), intent(in)                 :: i
-        integer(ip), intent(in)                 :: j
-        integer(ip), intent(in)                 :: state_id
-        real(wp)                                :: equilib 
-
-        ! Constant used in equilibrium calculation
-        real(wp), parameter  :: k1 = 1.0_wp/CS2
-        real(wp), parameter  :: k2 = 1.0_wp/(2.0_wp*CS4)
-        real(wp), parameter  :: k3 = 1.0_wp/(2.0_wp*CS2)
-
-        type(state_t), pointer   :: state ! alias for state
-        integer(ip)              :: ie    ! index offset by lattice vector x-comp
-        integer(ip)              :: je    ! index offest by lattice vector y-comp
-        type(vector_t)           :: u     ! velocity vector at ie, je
-        real(wp)                 :: wt    ! k-th lattice weight
-        real(wp)                 :: rho
-        real(wp)                 :: uu    ! squared magnitude of velocity
-        real(wp)                 :: eu    ! lattice velocity (ex,ey) to velocity (ux,uy)
-        real(wp)                 :: eu2   ! square of eu
-
-        select case (state_id)
-        case (LAST_STATE)
-            state => this % last
-        case (PRED_STATE)
-            state => this % pred
-        case (CURR_STATE)
-            state => this % curr
-        end select
-
-        ie  = i - nint(LATTICE_E(k) % x)
-        je  = j - nint(LATTICE_E(k) % y)
-        rho = state % rho(ie,je)
-        u   = state % u(ie,je)
-
-        wt  = LATTICE_W(k)
-        uu  = dot(u,u)
-        eu  = dot(LATTICE_E(k),u)
-        eu2 = eu**2 
-        equilib = rho*wt*(1.0_wp + k1*eu + k2*eu2 - k3*uu)
-
-    end function equilib_func
 
 
     subroutine steady_conv_test(this, max_err)
@@ -413,6 +378,25 @@ contains
         end if
     end subroutine print_info
     
+
+    function equilib_func(rho, u, k) result(feq)
+        real(wp),       intent(in)   :: rho ! fluid density
+        type(vector_t), intent(in)   :: u   ! fluid velocity vector
+        integer(ip),    intent(in)   :: k   ! lattice index
+        real(wp)                     :: feq ! kth comp. of equilibrum dist.
+
+        real(wp)   :: wt    ! k-th lattice weight
+        real(wp)   :: uu    ! squared magnitude of velocity
+        real(wp)   :: eu    ! lattice velocity (ex,ey) to velocity (ux,uy)
+        real(wp)   :: eu2   ! square of eu
+
+        wt  = LATTICE_W(k)
+        uu  = dot(u,u)
+        eu  = dot(LATTICE_E(k),u)
+        eu2 = eu**2 
+        feq = rho*wt*(1.0_wp + A1*eu + A2*eu2 - A3*uu)
+    end function equilib_func
+
 
     function get_save_cnt_str(cnt) result(res)
         integer,intent(in)        :: cnt

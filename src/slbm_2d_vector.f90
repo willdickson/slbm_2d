@@ -129,8 +129,8 @@ contains
         class(vector_t), intent(in) :: this
         type(vector_t),  intent(in) :: v 
         type(vector_t)              :: w
-        w % x = this % x/ v % x
-        w % y = this % y/ v % y
+        w % x = this % x / v % x
+        w % y = this % y / v % y
     end function div_vector
 
 

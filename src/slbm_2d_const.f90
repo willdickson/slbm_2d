@@ -83,7 +83,7 @@ module slbm_2d_const
     ! Latice constants
     real(wp),    parameter :: CS  = 1.0_wp/sqrt(3.0_wp)
     real(wp),    parameter :: CS2 = 1.0_wp/3.0_wp
-    real(wp),    parameter :: CS4 = CS2*CS2
+    real(wp),    parameter :: CS4 = CS2**2
 
     integer(ip), parameter :: LATTICE_Q = 9
     real(wp),    parameter :: LATTICE_W(LATTICE_Q) = [ &
