@@ -535,19 +535,23 @@ contains
 
         config % stop_time = nan
         call get_value(stop_table, 'time', config % stop_time, nan, stat)
-        if ( (stat < 0) .or. (ieee_is_nan(config % stop_time)) ) then
-            print *, 'config .toml stop is missing time or is not a real'
-            print *, 'stop_time = ', config % stop_time
-            stop
+        if ( config % stop_cond == STOP_COND_TIME ) then
+            if ( (stat < 0) .or. (ieee_is_nan(config % stop_time)) ) then
+                print *, 'config .toml stop is missing time or is not a real'
+                print *, 'stop_time = ', config % stop_time
+                stop
+            end if
         end if
         config % stop_time = abs(config % stop_time)
 
         config % stop_etol = nan
         call get_value(stop_table, 'etol', config % stop_etol, nan, stat)
-        if ( (stat < 0) .or. (ieee_is_nan(config % stop_etol)) ) then
-            print *, 'config .toml stop is missing time or is not a real'
-            print *, 'stop_etol = ', config % stop_etol
-            stop
+        if ( config % stop_cond == STOP_COND_STEADY ) then
+            if ( (stat < 0) .or. (ieee_is_nan(config % stop_etol)) ) then
+                print *, 'config .toml stop is missing etol or is not a real'
+                print *, 'stop_etol = ', config % stop_etol
+                stop
+            end if
         end if
         config % stop_etol = abs(config % stop_etol)
     end subroutine read_stop_table
