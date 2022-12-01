@@ -329,6 +329,9 @@ contains
     subroutine check_save_dir(this)
         class(simulation_t), intent(in) :: this
         character(:), allocatable       :: cmd
+        if (.not. allocated(config % save_dir) then 
+            return
+        end if 
         cmd = 'mkdir -p ' // this % config % save_dir
         call execute_command_line(cmd)
         cmd = 'rm ' // this % config % save_dir // "/*.npy"
@@ -349,7 +352,11 @@ contains
         character(:), allocatable       :: save_cnt_str
         character(:), allocatable       :: out_filename
 
+        if (.not. allocated(config % save_dir) then 
+            return
+        end if
         if ( modulo(iter, this % config % save_nstep) == 0) then
+
             save_cnt = save_cnt + 1
             num_x = this % config % num_x
             num_y = this % config % num_y
@@ -362,7 +369,6 @@ contains
             call save_npy(out_filename, out_data)
             print *, 'saving ' // out_filename
         end if
-
     end subroutine save_data
 
 

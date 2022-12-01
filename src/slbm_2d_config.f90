@@ -151,8 +151,8 @@ contains
         config % len_y = (config % num_y - 1.0_wp) * config % ds
         config % tau = 0.5_wp + (config % kvisc) / (CS2 * config % dt)
 
-
     end function config_from_toml
+
 
     function config_constructor( &
             num_x,        &  ! number of z grid points
@@ -163,7 +163,9 @@ contains
             stop_time,    &  ! simulation stop time  
             stop_etol,    &  ! error tolerance for steady stop
             stop_cond,    &  ! stop condition id
-            bndry_cond,  &  ! boundary conditions
+            save_nstep,   &  ! number of time stesp between saves
+            save_dir,     &  ! save directory 
+            bndry_cond,   &  ! boundary conditions
             init          &  ! initial conditions
             ) result(config)
         integer(ip), intent(in)                      :: num_x
@@ -174,6 +176,8 @@ contains
         real(wp), intent(in), optional               :: stop_time
         real(wp), intent(in), optional               :: stop_etol
         integer(ip),intent(in), optional             :: stop_cond
+        integer(ip), intent(in), optional            :: save_nstep     
+        character(*), intent(in), optional           :: save_dir  
         type(bndry_ptr_t), intent(in), optional      :: bndry_cond(NUM_BNDRY)
         class(init_t), intent(in), optional, pointer :: init
 
@@ -225,23 +229,46 @@ contains
 
         ! Set optional values
         if ( present(density) ) then
-            config % density = abs(density)
+            if (density <= 0.0_wp) then
+                print *, 'density must be > 0'
+                stop
+            end if 
+            config % density = density
         end if
         if ( present(stop_time) ) then
-            config % stop_time = abs(stop_time)
+            if (stop_time <= 0.0_wp) then
+                print *, 'stop_time must be > 0'
+                stop
+            end if
+            config % stop_time = stop_time
         end if
         if ( present(stop_etol) ) then
-            config % stop_etol = abs(stop_etol)
+            if (stop_etol <= 0.0) then
+                print *, 'stop_etol must be > 0'
+                stop
+            end if 
+            config % stop_etol =stop_etol
         end if
         if ( present(stop_cond) ) then
-            block
-                logical :: ok = .false.
-                select case(stop_cond)
-                case (STOP_COND_TIME, STOP_COND_STEADY)
-                    ok = .true.
-                end select
-            end block
+            select case(stop_cond)
+            case (STOP_COND_TIME, STOP_COND_STEADY)
+            case default
+                print *, 'unknown stop_cond ', stop_cond
+                stop
+            end select
             config % stop_cond = stop_cond
+        end if
+
+        if ( present(save_nstep) ) then
+            if (save_nstep <= 0) then
+                print *, 'save_nstep must be > 0'
+                stop
+            end if
+            config % save_nstep = save_nstep
+        end if
+
+        if ( present(save_dir) ) then
+            config % save_dir = save_dir
         end if
 
         ! bndrys are NOT CHECKED ... do this in bndry constructor?
@@ -264,6 +291,13 @@ contains
                 print *, 'config constructor init not allocated'
             end if
         end if
+
+        ! Set derivied values
+        config % dt = config % ds 
+        config % nstep = nint(config % stop_time / (config % dt))
+        config % len_x = (config % num_x - 1.0_wp) * config % ds 
+        config % len_y = (config % num_y - 1.0_wp) * config % ds
+        config % tau = 0.5_wp + (config % kvisc) / (CS2 * config % dt)
 
     end function config_constructor
 
