@@ -21,17 +21,20 @@ x, y = np.meshgrid(x,y)
 
 
 fig, ax = plt.subplots(1,1)
-w0 = np.absolute(w).max()
-s = 0.05
 if 1:
+    ax.pcolor(x,y,ux, cmap='RdYlBu')
+if 0:
+    w0 = np.absolute(w).max()
+    s = 0.05
     ax.pcolor(x,y,w, cmap='RdYlBu', vmin=-s*w0, vmax=s*w0)
-    #ax.streamplot(x, y,ux,uy,color='k',linewidth=1.0, density=0.2)
+    ax.streamplot(x, y,ux,uy,color='k',linewidth=1.0, density=0.2)
 
-    ind = 100*np.arange(20)
-    ii = 100*i
-    ax.quiver(x[:,ind],y[:,ind],ux[:,ind],uy[:,ind])
-    print(ux[:,ind])
-    #ax.quiver(x,y,ux,uy,scale=1.0)
+    #ind = 100*np.arange(20)
+    #ax.quiver(x[:,ind],y[:,ind],ux[:,ind],uy[:,ind])
+    #print(ux[:,ind])
+
+if 0:
+    ax.quiver(x,y,ux,uy,scale=1.0)
 
 if 0:
     for i in np.arange(20):
