@@ -1,7 +1,7 @@
 [mesh]
-ds = 0.01            
-num_x = 2001          
-num_y = 101         
+ds = 0.02            
+len_x = 20.0
+len_y = 1.0
 
 [save]
 nstep = 100 

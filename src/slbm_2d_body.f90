@@ -20,7 +20,7 @@ module slbm_2d_body
 
 contains
 
-    function body_constructor(type_id, pts, moving) result(body)
+    function body_constructor(type_id, points, moving) result(body)
         integer(ip), intent(in)    :: type_id
         type(vector_t), intent(in) :: points(:)
         logical, intent(in)        :: moving

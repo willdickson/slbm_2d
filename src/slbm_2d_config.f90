@@ -30,6 +30,8 @@ module slbm_2d_config
     use slbm_2d_const,  only : CS
     use slbm_2d_const,  only : CS2
 
+    use slbm_2d_const,  only : MESH_LEN_ETOL
+
     use slbm_2d_bndry,  only : bndry_t
     use slbm_2d_bndry,  only : bndry_ptr_t
     use slbm_2d_bndry,  only : cond_id_from_name
@@ -147,9 +149,8 @@ contains
         ! Set derivied values
         config % dt = config % ds 
         config % nstep = nint(config % stop_time / (config % dt))
-        config % len_x = (config % num_x - 1.0_wp) * config % ds 
-        config % len_y = (config % num_y - 1.0_wp) * config % ds
         config % tau = 0.5_wp + (config % kvisc) / (CS2 * config % dt)
+
 
     end function config_from_toml
 
@@ -333,21 +334,18 @@ contains
         print *, '---------------------------------------------'
         print *, 'num_x     = ', this % num_x
         print *, 'num_y     = ', this % num_y
+        print *, 'len_x     = ', this % len_x
+        print *, 'len_y     = ', this % len_y
         print *, 'ds        = ', this % ds
         print *, ''
+
         print *, 'fluid parameters'
         print *, '---------------------------------------------'
         print *, 'kvisc     = ', this % kvisc
         print *, 'density   = ', this % density
+        print *, 'tau       = ', this % tau
         print *, ''
-        print *, 'stop parameters'
-        print *, '---------------------------------------------'
-        print *, 'stop_cond = ', stop_cond_to_string(this % stop_cond)
-        print *, 'stop_time = ', this % stop_time
-        if ( this % stop_cond == STOP_COND_STEADY ) then
-            print *, 'stop_etol = ', this % stop_etol
-        end if
-        print *, ''
+
         print *, 'boundry parameters'
         print *, '---------------------------------------------'
         block
@@ -372,6 +370,7 @@ contains
                 print *, ''
             end do
         end block
+
         print *, 'initial condition parameters'
         print *, '---------------------------------------------'
         print *, 'name      = ', this % init % name
@@ -384,19 +383,28 @@ contains
             print *, 'value display not implemented'
         end select
         print *, ''
+
         print *, 'save parameters'
         print *, '---------------------------------------------'
         print *, 'nstep     = ', this % save_nstep
         print *, 'directory = ', this % save_dir
+        print *, ''
+
+        print *, 'stop parameters'
+        print *, '---------------------------------------------'
+        print *, 'stop_cond = ', stop_cond_to_string(this % stop_cond)
+        print *, 'stop_time = ', this % stop_time
+        if ( this % stop_cond == STOP_COND_STEADY ) then
+            print *, 'stop_etol = ', this % stop_etol
+        end if
 
         print *, ''
-        print *, 'derived parameters'
+        print *, 'time parameters'
         print *, '---------------------------------------------'
-        print *, 'nstep     = ', this % nstep
-        print *, 'len_x     = ', this % len_x
-        print *, 'len_y     = ', this % len_y
+        if (this % stop_cond == STOP_COND_TIME) then
+            print *, 'nstep     = ', this % nstep
+        end if
         print *, 'dt        = ', this % dt
-        print *, 'tau       = ', this % tau
         print *, ''
     end subroutine config_pprint
 
@@ -409,6 +417,12 @@ contains
         type(toml_table), pointer, intent(in)  :: table
         type(toml_table), pointer              :: mesh_table
         integer(ip)                            :: stat
+        logical                                :: has_num
+        logical                                :: has_len
+        real(wp)                               :: len_x
+        real(wp)                               :: len_y
+        real(wp)                               :: err_x
+        real(wp)                               :: err_y
         real(wp)                               :: nan
         nan = ieee_value(nan, ieee_quiet_nan)
 
@@ -425,21 +439,80 @@ contains
             print *, 'ds = ', config % ds
             stop
         end if
-        config % ds = abs(config % ds)
-
-        config % num_x = 0_ip
-        call get_value(mesh_table, 'num_x', config % num_x, -1_ip, stat)
-        if ( (stat < 0) .or. (config % num_x < 0) ) then
-            print *, 'config .toml mesh is missing num_x or value is negative'
-            print *, 'num_x = ', config % num_x
+        if (config % ds <= 0.0_wp) then 
+            print *, 'config .toml mesh ds must be > 0'
             stop
         end if
+        config % ds = config % ds
 
-        config % num_y = 0_ip
-        call get_value(mesh_table, 'num_y', config % num_y, -1_ip, stat)
-        if ( (stat < 0) .or. (config % num_y < 0) ) then
-            print *, 'config .toml mesh is missing num_y or value is negative'
-            print *, 'num_y = ', config % num_y
+        has_num = (mesh_table % has_key('num_x') .and. mesh_table % has_key('num_y'))
+        has_len = (mesh_table % has_key('len_x') .and. mesh_table % has_key('len_y'))
+
+        if (has_num) then 
+            config % num_x = 0_ip
+            call get_value(mesh_table, 'num_x', config % num_x, -1_ip, stat)
+            if ( (stat < 0) .or. (config % num_x < 0) ) then
+                print *, 'config .toml mesh is missing num_x or value is negative'
+                print *, 'num_x = ', config % num_x
+                stop
+            end if
+
+            config % num_y = 0_ip
+            call get_value(mesh_table, 'num_y', config % num_y, -1_ip, stat)
+            if ( (stat < 0) .or. (config % num_y < 0) ) then
+                print *, 'config .toml mesh is missing num_y or value is negative'
+                print *, 'num_y = ', config % num_y
+                stop
+            end if
+
+            config % len_x = (config % num_x - 1) * config % ds 
+            config % len_y = (config % num_y - 1) * config % ds
+
+        else if (has_len) then
+            len_x = nan 
+            call get_value(mesh_table, 'len_x', len_x, nan, stat)
+            if ( (stat < 0) .or. (ieee_is_nan(len_x) ) ) then
+                print *, 'config .toml mesh is missing len_x or value is not a real'
+                print *, 'len_x = ', len_x
+                stop
+            end if
+            if (len_x <= 0.0_wp) then
+                print *, 'config .toml mesh len_x must be > 0'
+                stop
+            end if
+
+            len_y = nan 
+            call get_value(mesh_table, 'len_y', len_y, nan, stat)
+            if ( (stat < 0) .or. (ieee_is_nan(len_y) ) ) then
+                print *, 'config .toml mesh is missing len_y or value is not a real'
+                print *, 'len_y = ', len_x
+                stop
+            end if
+            if (len_x <= 0.0_wp) then
+                print *, 'config .toml mesh len_y must be > 0'
+                stop
+            end if
+
+            config % num_x = nint(len_x/config % ds) + 1
+            config % num_y = nint(len_y/config % ds) + 1 
+            config % len_x = (config % num_x - 1)*config % ds
+            config % len_y = (config % num_y - 1)*config % ds
+
+            err_x = abs((config % len_x - len_x)/len_x)
+            err_y = abs((config % len_y - len_y)/len_y)
+
+            if (err_x > MESH_LEN_ETOL) then
+                print *, 'config .toml mesh actual len_x outside tolerance'
+                print *, 'select ds which better divides len_x'
+                stop
+            endif
+            if (err_y > MESH_LEN_ETOL) then
+                print *, 'config .toml mesh actual len_y outside tolerance'
+                print *, 'select ds which better divides len_y'
+                stop
+            end if
+        else
+            print *, 'config .toml mesh must specify either (num_x, num_y) or  (len_x, len_y)'
             stop
         end if
     end subroutine read_mesh_table

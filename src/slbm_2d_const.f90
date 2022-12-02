@@ -48,6 +48,11 @@ module slbm_2d_const
     public :: LATTICE_W            ! Lattice velocity vector weights
     public :: LATTICE_E            ! Lettice velocity vectors
 
+    ! Mesh constants
+    public :: MESH_LEN_ETOL        ! Relative tolerance for mesh when set
+                                   ! using len_x and len_y
+
+
     ! ------------------------------------------------------------------
     real(wp),    parameter :: PI  = 4_wp*atan(1.0_wp)
 
@@ -119,5 +124,7 @@ module slbm_2d_const
         vector_t(-1.0_wp, -1.0_wp),  &
         vector_t( 1.0_wp, -1.0_wp)   &
         ]
+
+    real(wp), parameter    :: MESH_LEN_ETOL = 1.0e-6
 
 end module slbm_2d_const
