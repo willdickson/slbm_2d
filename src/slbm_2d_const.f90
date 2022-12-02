@@ -7,6 +7,11 @@ module slbm_2d_const
 
     public :: PI                   ! mathematical constant (3.145...)
 
+    ! Body type ids
+    public :: BODY_TYPE_OPEN       ! Open curve body type
+    public :: BODY_TYPE_CLOSED     ! Closed curve body type
+    public :: BODY_TYPE_UNKNOWN    ! Unknown body type
+
     ! Stop condition ids
     public :: STOP_COND_TIME       ! Run time (duration) stop condition 
     public :: STOP_COND_STEADY     ! Steady state condition 
@@ -45,6 +50,11 @@ module slbm_2d_const
 
     ! ------------------------------------------------------------------
     real(wp),    parameter :: PI  = 4_wp*atan(1.0_wp)
+
+    ! Body type ids
+    integer(ip), parameter :: BODY_TYPE_OPEN    = 1 
+    integer(ip), parameter :: BODY_TYPE_CLOSED  = 2 
+    integer(ip), parameter :: BODY_TYPE_UNKNOWN = 3
 
     ! Stop condition ids
     integer(ip), parameter :: STOP_COND_TIME    = 1
