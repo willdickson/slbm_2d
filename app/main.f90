@@ -3,6 +3,9 @@ program main
     use slbm_2d,       only : testing
     implicit none
 
-    call testing
+
+
+    !call testing
+
 
 end program main

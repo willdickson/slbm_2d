@@ -26,6 +26,7 @@ module slbm_2d_simulation
     use slbm_2d_const,    only : STOP_COND_TIME
     use slbm_2d_const,    only : STOP_COND_STEADY
 
+    use slbm_2d_mesh,     only : mesh_t
     use slbm_2d_state,    only : state_t
     use slbm_2d_bndry,    only : bndry_t
     use slbm_2d_bndry,    only : side_id_to_name
@@ -53,6 +54,7 @@ module slbm_2d_simulation
         type(state_t)   :: last    ! state from last step
         type(state_t)   :: pred    ! state from predictor step
         type(state_t)   :: curr    ! state from current step
+        type(mesh_t)    :: mesh    ! x,y mesh
     contains
         private
         procedure, public  :: run
@@ -76,6 +78,7 @@ contains
     function simulation_constructor(config) result(simulation)
         type(config_t), intent(in) :: config
         type(simulation_t)         :: simulation
+
         simulation % config = config
 
         simulation % last = state_t(config)
@@ -86,6 +89,9 @@ contains
 
         simulation % curr = state_t(config)
         call simulation % set_bndry_cond(CURR_STATE) 
+
+        simulation % mesh = mesh_t(config)
+
     end function simulation_constructor
 
 
@@ -329,7 +335,7 @@ contains
     subroutine check_save_dir(this)
         class(simulation_t), intent(in) :: this
         character(:), allocatable       :: cmd
-        if (.not. allocated(config % save_dir) then 
+        if (.not. allocated(this % config % save_dir)) then 
             return
         end if 
         cmd = 'mkdir -p ' // this % config % save_dir
@@ -352,7 +358,7 @@ contains
         character(:), allocatable       :: save_cnt_str
         character(:), allocatable       :: out_filename
 
-        if (.not. allocated(config % save_dir) then 
+        if (.not. allocated(this % config % save_dir)) then 
             return
         end if
         if ( modulo(iter, this % config % save_nstep) == 0) then

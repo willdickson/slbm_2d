@@ -155,8 +155,8 @@ contains
 
 
     function config_constructor( &
-            num_x,        &  ! number of z grid points
-            num_y,        &  ! number of y grid points
+            num_x,        &  ! number of x mesh points
+            num_y,        &  ! number of y mesh points
             ds,           &  ! mesh step size
             kvisc,        &  ! kinematic viscosity
             density,      &  ! reference density
@@ -185,14 +185,37 @@ contains
         type(init_const_t), pointer                  :: init_const_zero
         integer(ip)                                  :: i
 
-        allocate(config)
 
         ! Set input parameters
-        config % num_x = abs(num_x)
-        config % num_y = abs(num_y)
-        config % ds = abs(ds)
-        config % kvisc = abs(kvisc)
-        config % stop_time = abs(stop_time)
+        if ( num_x <= 0 ) then
+            print *, 'num_x must > 0'
+            stop
+        end if
+        config % num_x = num_x
+
+        if (num_y <= 0) then
+            print *, 'num_y must be > 0'
+            stop
+        end if
+        config % num_y = num_y
+
+        if (ds <= 0.0) then
+            print *, 'ds must be > 0'
+            stop
+        end if
+        config % ds = ds
+
+        if (kvisc <= 0) then
+            print *, 'kvisc must be > 0'
+            stop
+        end if
+        config % kvisc = kvisc
+
+        if (stop_time <= 0) then
+            print *, 'stop_time must > 0'
+            stop
+        end if
+        config % stop_time = stop_time
 
         ! Set derivied values
         config % dt = ds
@@ -291,13 +314,6 @@ contains
                 print *, 'config constructor init not allocated'
             end if
         end if
-
-        ! Set derivied values
-        config % dt = config % ds 
-        config % nstep = nint(config % stop_time / (config % dt))
-        config % len_x = (config % num_x - 1.0_wp) * config % ds 
-        config % len_y = (config % num_y - 1.0_wp) * config % ds
-        config % tau = 0.5_wp + (config % kvisc) / (CS2 * config % dt)
 
     end function config_constructor
 
