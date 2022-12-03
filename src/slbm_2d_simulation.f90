@@ -27,6 +27,7 @@ module slbm_2d_simulation
     use slbm_2d_const,    only : STOP_COND_STEADY
 
     use slbm_2d_mesh,     only : mesh_t
+    use slbm_2d_body,     only : body_t
     use slbm_2d_state,    only : state_t
     use slbm_2d_bndry,    only : bndry_t
     use slbm_2d_bndry,    only : side_id_to_name
