@@ -11,35 +11,28 @@ module slbm_2d_line_seg
 
     public :: intersect
 
-    integer(ip), parameter :: CLOCKWISE      =  1_ip
-    integer(ip), parameter :: CNTR_CLOCKWISE = -1_ip
-    integer(ip), parameter :: COLLINEAR      =  0_ip
 
 
 contains
 
-    function intersect(seg1, seg2) result(test)
+    function intersect(seg1, seg2) result(res)
         type(line_seg_t), intent(in) :: seg1
         type(line_seg_t), intent(in) :: seg2
-        logical                      :: test
-        test = .false.
-
+        logical                      :: test1
+        logical                      :: test2
+        logical                      :: res
+        test1 = ccw(seg1 % p, seg2 % p, seg2 % q) .neqv. ccw(seg1 % q, seg2 % p, seg2 % q) 
+        test2 = ccw(seg1 % p, seg1 % q, seg2 % p) .neqv. ccw(seg1 % p, seg1 % q, seg2 % q) 
+        res = test1 .and. test2
     end function intersect
 
-    function orientation(p, q, r) result(ori_val)
-        type(vector_t), intent(in) :: p
-        type(vector_t), intent(in) :: q
-        type(vector_t), intent(in) :: r
-        real(wp)                   :: ori_val
-        integer(ip)                :: ori_int
-        ori_val = (q % y - p % y) * (r % x - q % x) - (q % x - p % x) * (r % y - q % y)
-        if (ori_val > 0) then
-            ori_int = CLOCKWISE 
-        else if (ori_val < 0) then 
-            ori_int = CNTR_CLOCKWISE 
-        else
-            ori_int = COLLINEAR 
-        end if
-    end function orientation
+
+    function ccw(a,b,c) result(res)
+        type(vector_t), intent(in) :: a
+        type(vector_t), intent(in) :: b
+        type(vector_t), intent(in) :: c
+        logical                    :: res
+        res = (c % y - a % y) * (b % x - a % x) > (b % y-a % y) * (c % x - a % x)
+    end function ccw
 
 end module slbm_2d_line_seg
