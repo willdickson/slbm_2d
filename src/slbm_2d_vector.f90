@@ -21,7 +21,8 @@ module slbm_2d_vector
         procedure, pass(this) :: div_scalar 
         procedure, pass(this) :: assign_vector
         procedure, pass(this) :: assign_scalar
-        
+        procedure, pass(this) :: equals
+
         generic, public ::   operator(+) => add_vector, &
                                             scalar_add, &
                                             add_scalar
@@ -37,6 +38,7 @@ module slbm_2d_vector
 
         generic, public :: assignment(=) => assign_vector, &
                                             assign_scalar
+        generic, public ::  operator(==) => equals
     end type
 
     public :: dot
@@ -157,6 +159,14 @@ contains
         this % x = a
         this % y = a
     end subroutine assign_scalar
+
+
+    elemental function equals(this, v) result(res)
+        class(vector_t), intent(in) :: this
+        type(vector_t), intent(in)  :: v
+        logical                     :: res
+        res = (this % x == v % x) .and. (this % y == v % y)
+    end function equals
 
 
     elemental function dot(u,v) result(val)
