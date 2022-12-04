@@ -35,14 +35,14 @@ module slbm_2d_line_seg
 
 contains
 
-    function reverse(this) result(seg)
+    elemental function reverse(this) result(seg)
         class(line_seg_t), intent(in) :: this
         type(line_seg_t)              :: seg
         seg = line_seg_t(this % q, this % p)
     end function reverse
 
 
-    function tail_equal_head(this, other) result(res)
+    elemental function tail_equal_head(this, other) result(res)
         class(line_seg_t), intent(in) :: this
         type(line_seg_t), intent(in)  :: other
         logical                       :: res
@@ -50,7 +50,7 @@ contains
     end function tail_equal_head
 
 
-    function on_segment(this, r) result(res)
+    elemental function on_segment(this, r) result(res)
         class(line_seg_t), intent(in) :: this
         type(vector_t), intent(in)   :: r
         logical                      :: res
@@ -70,7 +70,7 @@ contains
     end function on_segment
 
 
-    function head_equal_tail(this, other) result(res)
+    elemental function head_equal_tail(this, other) result(res)
         class(line_seg_t), intent(in) :: this
         type(line_seg_t), intent(in)  :: other
         logical                       :: res
@@ -78,7 +78,7 @@ contains
     end function head_equal_tail
 
 
-    function equal(this, other) result(res)
+    elemental function equal(this, other) result(res)
         class(line_seg_t), intent(in) :: this
         type(line_seg_t), intent(in)  :: other
         logical                       :: res
@@ -86,7 +86,7 @@ contains
     end function equal
 
 
-    function not_equal(this, other) result(res)
+    elemental function not_equal(this, other) result(res)
         class(line_seg_t), intent(in) :: this
         type(line_seg_t), intent(in)  :: other
         logical                       :: res
@@ -94,7 +94,7 @@ contains
     end function not_equal
 
 
-    function intersect(seg1, seg2) result(res)
+    elemental function intersect(seg1, seg2) result(res)
         type(line_seg_t), intent(in) :: seg1
         type(line_seg_t), intent(in) :: seg2
         integer(ip)                  :: ori1
@@ -127,7 +127,7 @@ contains
 
 
 
-    function collinear_seg_and_pt(seg, r) result(res)
+    elemental function collinear_seg_and_pt(seg, r) result(res)
         type(line_seg_t), intent(in) :: seg
         type(vector_t), intent(in)   :: r
         real(wp)                     :: val
@@ -141,7 +141,7 @@ contains
     end function collinear_seg_and_pt
 
 
-    function collinear_pt_and_pt(a,b,c) result(res)
+    elemental function collinear_pt_and_pt(a,b,c) result(res)
         type(vector_t), intent(in) :: a
         type(vector_t), intent(in) :: b
         type(vector_t), intent(in) :: c
@@ -155,7 +155,7 @@ contains
     end function collinear_pt_and_pt
 
 
-    function orientation(a,b,c) result(res)
+    elemental function orientation(a,b,c) result(res)
         type(vector_t), intent(in) :: a
         type(vector_t), intent(in) :: b
         type(vector_t), intent(in) :: c
@@ -171,7 +171,7 @@ contains
         end if
     end function orientation 
 
-    function is_chain(seg1,seg2) result(res)
+    elemental function is_chain(seg1,seg2) result(res)
         type(line_seg_t), intent(in) :: seg1
         type(line_seg_t), intent(in) :: seg2
         logical                      :: res

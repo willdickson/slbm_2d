@@ -63,11 +63,11 @@ contains
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
         body = body_t(BODY_TYPE_OPEN, pts)
 
-        call body % update_nghbrs(config % num_x, config % num_y, config % ds)
-        do k = 1, body % num_pts()
-            print *, k, body % nghbrs(k) % num
-            do i = 1, body % nghbrs(k) % num
-                print *, '      ', body % nghbrs(k) % ix(i), body % nghbrs(k) % iy(i)
+        call body % update_nbrs(config % num_x, config % num_y, config % ds)
+        do k = 1, body % num_pos()
+            print *, k, body % nbrs(k) % num
+            do i = 1, body % nbrs(k) % num
+                print *, '      ', body % nbrs(k) % ix(i), body % nbrs(k) % iy(i)
             end do
         end do 
 
