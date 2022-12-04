@@ -50,18 +50,26 @@ contains
         type(body_t)                :: body
         type(vector_t), allocatable :: pts(:)
         real(wp), allocatable       :: s(:)
-        integer(ip)                 :: i
+        integer(ip)                 :: i,j,k
 
         filename = './example/config.toml'
         config = config_t(filename)
         call config % pprint()
         sim = simulation_t(config)
 
-        s = [((s0 + (s1 - s0)*i/(num_pts - 1.0_wp)), i = 0, num_pts-1)]
+        s = [((s0 + (s1 - s0)*k/(num_pts - 1.0_wp)), k = 0, num_pts-1)]
         allocate(pts(size(s)))
         pts % x = x0 + amp_x*cos(2.0_wp*PI*s)
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
         body = body_t(BODY_TYPE_OPEN, pts)
+
+        call body % update_nghbrs(config % num_x, config % num_y, config % ds)
+        do k = 1, body % num_pts()
+            print *, k, body % nghbrs(k) % num
+            do i = 1, body % nghbrs(k) % num
+                print *, '      ', body % nghbrs(k) % ix(i), body % nghbrs(k) % iy(i)
+            end do
+        end do 
 
     end subroutine body_test
 

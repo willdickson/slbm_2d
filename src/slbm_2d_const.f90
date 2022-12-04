@@ -12,6 +12,8 @@ module slbm_2d_const
     public :: BODY_TYPE_CLOSED     ! Closed curve body type
     public :: BODY_TYPE_UNKNOWN    ! Unknown body type
 
+    public :: BODY_PT_MAX_NGHBRS   ! Max number (mesh) neighbors for body pt.
+
     ! Stop condition ids
     public :: STOP_COND_TIME       ! Run time (duration) stop condition 
     public :: STOP_COND_STEADY     ! Steady state condition 
@@ -57,14 +59,16 @@ module slbm_2d_const
     real(wp),    parameter :: PI  = 4_wp*atan(1.0_wp)
 
     ! Body type ids
-    integer(ip), parameter :: BODY_TYPE_OPEN    = 1 
-    integer(ip), parameter :: BODY_TYPE_CLOSED  = 2 
-    integer(ip), parameter :: BODY_TYPE_UNKNOWN = 3
+    integer(ip), parameter :: BODY_TYPE_OPEN     = 1 
+    integer(ip), parameter :: BODY_TYPE_CLOSED   = 2 
+    integer(ip), parameter :: BODY_TYPE_UNKNOWN  = 3
+
+    integer(ip), parameter :: BODY_PT_MAX_NGHBRS = 25   
 
     ! Stop condition ids
-    integer(ip), parameter :: STOP_COND_TIME    = 1
-    integer(ip), parameter :: STOP_COND_STEADY  = 2
-    integer(ip), parameter :: STOP_COND_UNKNOWN = 3
+    integer(ip), parameter :: STOP_COND_TIME     = 1
+    integer(ip), parameter :: STOP_COND_STEADY   = 2
+    integer(ip), parameter :: STOP_COND_UNKNOWN  = 3
 
     ! Boundry number and names
     integer(ip), parameter :: NUM_BNDRY = 4
