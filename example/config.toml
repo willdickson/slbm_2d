@@ -1,6 +1,6 @@
 [mesh]
-ds = 0.02            
-len_x = 20.0
+ds = 0.01            
+len_x = 1.0
 len_y = 1.0
 
 [save]

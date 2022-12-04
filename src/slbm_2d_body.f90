@@ -30,6 +30,7 @@ contains
         type(body_t)               :: body
         body % type_id = type_id
         body % points  = points
+        call body % check_points()
     end function body_constructor
 
 
@@ -42,6 +43,8 @@ contains
         logical                   :: th_test
         logical                   :: on_test
         logical                   :: ok
+
+        ! Make sure that body is simple curve.
         ok = .true.
         do i = 1, size(this % points)-2
             do j = i+1, size(this % points)-1
@@ -58,6 +61,7 @@ contains
                 end if
             end do
         end do
+
     end subroutine check_points
 
 end module slbm_2d_body
