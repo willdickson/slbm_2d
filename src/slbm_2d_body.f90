@@ -1,6 +1,7 @@
 module slbm_2d_body
 
     use slbm_2d_kinds,    only : wp, ip
+    use slbm_2d_const,    only : PI
     use slbm_2d_const,    only : BODY_TYPE_OPEN
     use slbm_2d_const,    only : BODY_TYPE_CLOSED
     use slbm_2d_const,    only : BODY_TYPE_UNKNOWN
@@ -168,6 +169,27 @@ contains
             end do
         end do
     end function check_pos
+
+
+    function kernel(p, q, ds) result(val)
+        type(vector_t), intent(in) :: p
+        type(vector_t), intent(in) :: q
+        real(wp), intent(in)       :: ds
+        real(wp)                   :: val
+        real(wp)                   :: dx
+        real(wp)                   :: dy 
+        real(wp)                   :: kx 
+        real(wp)                   :: ky 
+        dx = abs(p % x - q % x)/ds
+        dy = abs(p % y - q % y)/ds
+        if ((dx > 2.0_wp .or. dy > 2.0_wp)) then
+            val = 0.0_wp
+        else
+            kx = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dx))
+            ky = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dy))
+            val = kx * ky
+        end if
+    end function kernel
 
 
 end module slbm_2d_body
