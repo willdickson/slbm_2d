@@ -19,15 +19,19 @@ module slbm_2d_body
 
     type, public :: body_t
         integer(ip)                 :: type_id = BODY_TYPE_UNKNOWN
-        type(vector_t), allocatable :: pos(:)  ! positions of body points 
-        type(vector_t), allocatable :: vel(:)  ! velocities of body point
-        real(wp), allocatable       :: rho(:)  ! density at body points
-        type(nbrs_t), allocatable   :: nbrs(:) ! neighboring mesh pos
+        type(vector_t), allocatable :: pos(:)   ! positions of body points 
+        type(vector_t), allocatable :: vel(:)   ! velocities of body point
+        type(nbrs_t), allocatable   :: nbrs(:)  ! neighboring mesh pos
+        real(wp), allocatable       :: rho(:)   ! density at body points
+        real(wp), allocatable       :: mat(:,:) ! matrix for velocity correction
     contains
         private
         procedure, public  :: update
+        procedure          :: update_pos_and_vel
+        procedure          :: update_nbrs_and_rho
+        procedure, public  :: corrector
         procedure, public  :: num_pos
-        procedure, public  :: check_pos
+        procedure          :: check_pos
     end type body_t
 
 
@@ -50,11 +54,14 @@ contains
         allocate(body % vel(size(pos)))
         body % vel = vector_t(0.0_wp, 0.0_wp)
 
+        allocate(body % nbrs(size(pos)))
+        body % nbrs = nbrs_t(0_ip, 0_ip, 0_ip)
+
         allocate(body % rho(size(pos)))
         body % rho = 0.0_wp
 
-        allocate(body % nbrs(size(pos)))
-        body % nbrs = nbrs_t(0_ip, 0_ip, 0_ip)
+        allocate(body % mat(size(pos), size(pos)))
+        body % mat = 0.0_wp
 
         if (.not. body % check_pos()) then
             print *, 'body is not a simple curve'
@@ -62,8 +69,28 @@ contains
         end if
     end function body_constructor
 
-
+    
     subroutine update(this, state, mesh, ds, time)
+        class(body_t), intent(inout) :: this    ! the current body 
+        type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
+        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
+        real(wp), intent(in)         :: ds      ! mesh spacing
+        real(wp), intent(in)         :: time    ! simulation time 
+        call update_pos_and_vel(this, state, mesh, ds, time)
+        call update_nbrs_and_rho(this, state, mesh, ds, time)
+    end subroutine update
+
+
+    subroutine update_pos_and_vel(this, state, mesh, ds, time)
+        class(body_t), intent(inout) :: this    ! the current body 
+        type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
+        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
+        real(wp), intent(in)         :: ds      ! mesh spacing
+        real(wp), intent(in)         :: time    ! simulation time 
+    end subroutine update_pos_and_vel
+
+
+    subroutine update_nbrs_and_rho(this, state, mesh, ds, time)
         class(body_t), intent(inout) :: this    ! the current body 
         type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
         type(mesh_t), intent(in)     :: mesh    ! x and y meshes
@@ -110,15 +137,18 @@ contains
 
             do i = i_min, i_max
                 do j = j_min, j_max
+                    ! Position of mesh point
+                    xm = mesh % x(i,j)
+                    ym = mesh % y(i,j)
+
                     ! Add neighbors to array
                     nnbrs = this % nbrs(k) % num + 1
                     this % nbrs(k) % num  = nnbrs
                     this % nbrs(k) % ix(nnbrs) = i
                     this % nbrs(k) % iy(nnbrs) = j
+                    this % nbrs(k) % pos(nnbrs) = vector_t(xm, ym)
 
                     ! Find closest cell to body point
-                    xm = mesh % x(i,j)
-                    ym = mesh % y(i,j)
                     xb = this % pos(k) % x
                     yb = this % pos(k) % y
                     r = sqrt((xm-xb)**2 + (ym-yb)**2)
@@ -129,7 +159,7 @@ contains
                 end do
             end do 
         end do
-    end subroutine update
+    end subroutine update_nbrs_and_rho
 
 
     elemental function num_pos(this) result(num)
@@ -171,6 +201,49 @@ contains
     end function check_pos
 
 
+    subroutine corrector(this, mesh, ds)
+        class(body_t), intent(inout) :: this    
+        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
+        real(wp), intent(in)         :: ds
+        real(wp)                     :: d1
+        real(wp)                     :: d2
+        integer(ip)                  :: i,j,k
+
+        ! Create linear system matrix for finding velocity corrections
+        this % mat = 0.0_wp
+        !do i = 1, this % num_pos()
+        !    do j = 1, this % num_pos()
+        do i = 1, 1
+            do j = 2, 2
+                do k = 1, this % nbrs(i) % num
+                    d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
+                    d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
+                    this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
+                    print *, k, d1, d1
+                end do
+                print *, i, j, this % mat(i,j)
+            end do 
+            print *, ''
+        end do
+
+        do i = 2, 2
+            do j = 1, 1
+                do k = 1, this % nbrs(i) % num
+                    d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
+                    d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
+                    this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
+                    print *, k, d1, d1
+                end do
+                print *, i, j, this % mat(i,j)
+            end do 
+            print *, ''
+        end do
+
+    end subroutine corrector
+
+
+
+
     function kernel(p, q, ds) result(val)
         type(vector_t), intent(in) :: p
         type(vector_t), intent(in) :: q
@@ -187,7 +260,8 @@ contains
         else
             kx = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dx))
             ky = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dy))
-            val = kx * ky
+            val = (kx * ky)/(ds**2)
+            !val = kx * ky
         end if
     end function kernel
 
