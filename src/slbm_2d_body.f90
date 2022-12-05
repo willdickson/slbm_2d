@@ -211,33 +211,47 @@ contains
 
         ! Create linear system matrix for finding velocity corrections
         this % mat = 0.0_wp
-        !do i = 1, this % num_pos()
-        !    do j = 1, this % num_pos()
-        do i = 1, 1
-            do j = 2, 2
+        do i = 1, this % num_pos()
+            do j = i, this % num_pos()
                 do k = 1, this % nbrs(i) % num
                     d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
                     d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
                     this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
-                    print *, k, d1, d1
+                    print *, i, j, this % nbrs(i) % pos(k) 
                 end do
-                print *, i, j, this % mat(i,j)
+                this % mat(j,i) = this % mat(i,j)
             end do 
-            print *, ''
         end do
 
-        do i = 2, 2
-            do j = 1, 1
-                do k = 1, this % nbrs(i) % num
-                    d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
-                    d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-                    this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
-                    print *, k, d1, d1
-                end do
-                print *, i, j, this % mat(i,j)
-            end do 
-            print *, ''
-        end do
+        !this % mat = 0.0_wp
+        !!do i = 1, this % num_pos()
+        !!    do j = 1, this % num_pos()
+        !do i = 1, 1
+        !    do j = 2, 2
+        !        do k = 1, this % nbrs(i) % num
+        !            d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
+        !            d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
+        !            this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
+        !            print *, i, j, this % nbrs(i) % pos(k) 
+        !        end do
+        !        print *, i, j, this % mat(i,j)
+        !    end do 
+        !    print *, ''
+        !end do
+
+        !this % mat = 0.0_wp
+        !do i = 2, 2
+        !    do j = 1, 1
+        !        do k = 1, this % nbrs(i) % num
+        !            d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
+        !            d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
+        !            this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
+        !            print *, i, j, this % nbrs(i) % pos(k) 
+        !        end do
+        !        print *, i, j, this % mat(i,j)
+        !    end do 
+        !    print *, ''
+        !end do
 
     end subroutine corrector
 
