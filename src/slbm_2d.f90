@@ -63,16 +63,16 @@ contains
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
         body = body_t(BODY_TYPE_OPEN, pts)
 
-        call body % update_nbrs(config % num_x, config % num_y, config % ds)
+        call body % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
         do k = 1, body % num_pos()
             print *, k, body % nbrs(k) % num
+            print *, body % pos(k) % x / config % ds, body % pos(k) % y / config % ds
             do i = 1, body % nbrs(k) % num
                 print *, '      ', body % nbrs(k) % ix(i), body % nbrs(k) % iy(i)
             end do
         end do 
 
     end subroutine body_test
-
 
 
     subroutine line_seg_test
@@ -87,5 +87,6 @@ contains
         s2 = line_seg_t(c,d)
         print *, intersect(s1, s2), is_chain(s1, s2)
     end subroutine line_seg_test
+
 
 end module slbm_2d
