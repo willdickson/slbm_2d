@@ -40,9 +40,9 @@ contains
         real(wp), parameter         :: s1 = 0.5_wp
         real(wp), parameter         :: x0 = 0.5_wp
         real(wp), parameter         :: y0 = 0.5_wp
-        real(wp), parameter         :: amp_x = 0.2_wp
-        real(wp), parameter         :: amp_y = 0.2_wp
-        integer(ip), parameter      :: num_pts = 100 
+        real(wp), parameter         :: amp_x = 0.01_wp
+        real(wp), parameter         :: amp_y = 0.01_wp
+        integer(ip), parameter      :: num_pts = 5 
 
         character(:), allocatable   :: filename
         type(config_t)              :: config

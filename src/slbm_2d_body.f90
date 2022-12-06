@@ -19,12 +19,12 @@ module slbm_2d_body
 
     type, public :: body_t
         integer(ip)                 :: type_id = BODY_TYPE_UNKNOWN
-        type(vector_t), allocatable :: pos(:)   ! positions of body points 
-        type(vector_t), allocatable :: vel(:)   ! velocities of body point
-        type(nbrs_t), allocatable   :: nbrs(:)  ! neighboring mesh pos
-        real(wp), allocatable       :: rho(:)   ! density at body points
-        real(wp), allocatable       :: a(:,:)   ! A matrix for velocity correction Ax=b
-        type(vector_t), allocatable :: b(:)     ! b vectors for velocity correction
+        type(vector_t), allocatable :: pos(:)    ! positions of body points 
+        type(vector_t), allocatable :: vel(:)    ! velocities of body point
+        type(nbrs_t), allocatable   :: nbrs(:)   ! neighboring mesh pos
+        real(wp), allocatable       :: rho(:)    ! density at body points
+        real(wp), allocatable       :: a(:,:)    ! A matrix for velocity correction Ax=b
+        type(vector_t), allocatable :: b(:)      ! b vectors for velocity correction
     contains
         private
         procedure, public  :: update
@@ -170,23 +170,28 @@ contains
 
     subroutine corrector(this, mesh, ds)
         class(body_t), intent(inout) :: this    
-        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
+        type(mesh_t), intent(in)     :: mesh    
         real(wp), intent(in)         :: ds
         real(wp)                     :: kval
         real(wp)                     :: kval1
         real(wp)                     :: kval2
         integer(ip)                  :: i,j,k
 
+        ! Still not quite right ... need to do this another way. 
         ! Create A matrix for finding velocity corrections, Ax=b
         this % a = 0.0_wp
         do i = 1, this % num_pos()
             do j = 1, this % num_pos()
-                do k = 1, min(this % nbrs(j) % num, this % nbrs(i) % num)
+                do k = 1, this % nbrs(i) % num
                     kval1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
                     kval2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
                     this % a(i,j) = this % a(i,j) + kval1*kval2
                 end do
-                this % a(j,i) = this % a(i,j)
+                do k = 1, this % nbrs(j) % num
+                    kval1 = kernel(this % nbrs(j) % pos(k), this % pos(i), ds)
+                    kval2 = kernel(this % nbrs(j) % pos(k), this % pos(j), ds)
+                    this % a(i,j) = this % a(i,j) + kval1*kval2
+                end do
             end do 
         end do
 
@@ -252,7 +257,7 @@ contains
         real(wp)                   :: ky 
         dx = abs(p % x - q % x)/ds
         dy = abs(p % y - q % y)/ds
-        if ((dx > 2.0_wp .or. dy > 2.0_wp)) then
+        if ((dx >= 2.0_wp .or. dy >= 2.0_wp)) then
             val = 0.0_wp
         else
             kx = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dx))
