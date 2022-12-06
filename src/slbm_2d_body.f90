@@ -23,7 +23,8 @@ module slbm_2d_body
         type(vector_t), allocatable :: vel(:)   ! velocities of body point
         type(nbrs_t), allocatable   :: nbrs(:)  ! neighboring mesh pos
         real(wp), allocatable       :: rho(:)   ! density at body points
-        real(wp), allocatable       :: mat(:,:) ! matrix for velocity correction
+        real(wp), allocatable       :: a(:,:)   ! A matrix for velocity correction Ax=b
+        type(vector_t), allocatable :: b(:)     ! b vectors for velocity correction
     contains
         private
         procedure, public  :: update
@@ -47,6 +48,7 @@ contains
         integer(ip), intent(in)    :: type_id
         type(vector_t), intent(in) :: pos(:)
         type(body_t)               :: body
+        integer(ip)                :: i
 
         body % type_id = type_id
         body % pos  = pos
@@ -55,13 +57,18 @@ contains
         body % vel = vector_t(0.0_wp, 0.0_wp)
 
         allocate(body % nbrs(size(pos)))
-        body % nbrs = nbrs_t(0_ip, 0_ip, 0_ip)
+        do i = 1, size(pos)
+            call body % nbrs(i) % set_to_zero()
+        end do
 
         allocate(body % rho(size(pos)))
         body % rho = 0.0_wp
 
-        allocate(body % mat(size(pos), size(pos)))
-        body % mat = 0.0_wp
+        allocate(body % a(size(pos), size(pos)))
+        body % a = 0.0_wp
+
+        allocate(body % b(size(pos)))
+        body % b = vector_t(0.0_wp, 0.0_wp)
 
         if (.not. body % check_pos()) then
             print *, 'body is not a simple curve'
@@ -117,10 +124,10 @@ contains
         num_y = size(state % rho, 2)
         big_r = ds*sqrt((num_x-1.0_wp)**2 + (num_y - 1.0_wp)**2)
 
-        ! Loop over body points and find mesh point neighbors and closed cell
-        ! for density. 
-        this % nbrs  = nbrs_t(0_ip, 0_ip, 0_ip)
+        ! For each body pint find mesh point neighbors closest mesh cell 
         do k = 1, size(this % pos)
+
+            call this % nbrs(k) % set_to_zero()
 
             ! Get search indices for neighbors which are inside mesh
             i_min = ceiling((this % pos(k) % x - 2.0_wp*ds)/ds)
@@ -132,9 +139,7 @@ contains
             i_max = min(max(i_max,1), num_x)
             j_max = min(max(j_max,1), num_y)
 
-            ! Assign min_r the biggest possible value
             min_r = big_r
-
             do i = i_min, i_max
                 do j = j_min, j_max
                     ! Position of mesh point
@@ -147,6 +152,7 @@ contains
                     this % nbrs(k) % ix(nnbrs) = i
                     this % nbrs(k) % iy(nnbrs) = j
                     this % nbrs(k) % pos(nnbrs) = vector_t(xm, ym)
+                    this % nbrs(k) % u(nnbrs) = state % u(i,j) 
 
                     ! Find closest cell to body point
                     xb = this % pos(k) % x
@@ -160,6 +166,40 @@ contains
             end do 
         end do
     end subroutine update_nbrs_and_rho
+
+
+    subroutine corrector(this, mesh, ds)
+        class(body_t), intent(inout) :: this    
+        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
+        real(wp), intent(in)         :: ds
+        real(wp)                     :: kval
+        real(wp)                     :: kval1
+        real(wp)                     :: kval2
+        integer(ip)                  :: i,j,k
+
+        ! Create A matrix for finding velocity corrections, Ax=b
+        this % a = 0.0_wp
+        do i = 1, this % num_pos()
+            do j = 1, this % num_pos()
+                do k = 1, min(this % nbrs(j) % num, this % nbrs(i) % num)
+                    kval1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
+                    kval2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
+                    this % a(i,j) = this % a(i,j) + kval1*kval2
+                end do
+                this % a(j,i) = this % a(i,j)
+            end do 
+        end do
+
+        ! Create b vector for finding velocity corrections
+        do i = 1, this % num_pos()
+            this % b(i) = vector_t(0.0_wp, 0.0_wp)
+            do k = 1, this % nbrs(i) % num
+                kval = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
+                this % b(i) = this % b(i) - kval * this % nbrs(i) % u(k)
+            end do
+        end do
+
+    end subroutine corrector
 
 
     elemental function num_pos(this) result(num)
@@ -199,62 +239,6 @@ contains
             end do
         end do
     end function check_pos
-
-
-    subroutine corrector(this, mesh, ds)
-        class(body_t), intent(inout) :: this    
-        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
-        real(wp), intent(in)         :: ds
-        real(wp)                     :: d1
-        real(wp)                     :: d2
-        integer(ip)                  :: i,j,k
-
-        ! Create linear system matrix for finding velocity corrections
-        this % mat = 0.0_wp
-        do i = 1, this % num_pos()
-            do j = i, this % num_pos()
-                do k = 1, this % nbrs(i) % num
-                    d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
-                    d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-                    this % mat(i,j) = this % mat(i,j) + d1*d2
-                end do
-                this % mat(j,i) = this % mat(i,j)
-            end do 
-        end do
-
-        !this % mat = 0.0_wp
-        !!do i = 1, this % num_pos()
-        !!    do j = 1, this % num_pos()
-        !do i = 1, 1
-        !    do j = 2, 2
-        !        do k = 1, this % nbrs(i) % num
-        !            d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
-        !            d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-        !            this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
-        !            print *, i, j, this % nbrs(i) % pos(k) 
-        !        end do
-        !        print *, i, j, this % mat(i,j)
-        !    end do 
-        !    print *, ''
-        !end do
-
-        !this % mat = 0.0_wp
-        !do i = 2, 2
-        !    do j = 1, 1
-        !        do k = 1, this % nbrs(i) % num
-        !            d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
-        !            d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-        !            this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
-        !            print *, i, j, this % nbrs(i) % pos(k) 
-        !        end do
-        !        print *, i, j, this % mat(i,j)
-        !    end do 
-        !    print *, ''
-        !end do
-
-    end subroutine corrector
-
-
 
 
     function kernel(p, q, ds) result(val)

@@ -11,6 +11,21 @@ module slbm_2d_nbrs
         integer(ip)    :: ix(BODY_PT_MAX_NBRS)  ! x indices of mesh neighbors
         integer(ip)    :: iy(BODY_PT_MAX_NBRS)  ! y indices of mesh neighbors
         type(vector_t) :: pos(BODY_PT_MAX_NBRS) ! position of mesh neighbors
+        type(vector_t) :: u(BODY_PT_MAX_NBRS)   ! fluid velocity of mesh neighbors
+    contains
+        private
+        procedure, public :: set_to_zero
     end type
+
+contains
+
+    subroutine set_to_zero(this)
+        class(nbrs_t), intent(inout) :: this
+        this % num = 0_ip
+        this % ix  = 0_ip
+        this % iy  = 0_ip
+        this % pos = vector_t(0.0_wp, 0.0_wp)
+        this % u   = vector_t(0.0_wp, 0.0_wp)
+    end subroutine set_to_zero
 
 end module slbm_2d_nbrs

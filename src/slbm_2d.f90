@@ -40,9 +40,9 @@ contains
         real(wp), parameter         :: s1 = 0.5_wp
         real(wp), parameter         :: x0 = 0.5_wp
         real(wp), parameter         :: y0 = 0.5_wp
-        real(wp), parameter         :: amp_x = 0.02_wp
-        real(wp), parameter         :: amp_y = 0.02_wp
-        integer(ip), parameter      :: num_pts = 5 
+        real(wp), parameter         :: amp_x = 0.2_wp
+        real(wp), parameter         :: amp_y = 0.2_wp
+        integer(ip), parameter      :: num_pts = 100 
 
         character(:), allocatable   :: filename
         type(config_t)              :: config
@@ -65,23 +65,13 @@ contains
 
         call body % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
         call body % corrector(sim % mesh, config % ds)
-        !do k = 1, body % num_pos()
-        !    print *, k, body % nbrs(k) % num
-        !    print *, body % pos(k) % x / config % ds, body % pos(k) % y / config % ds
-        !    do i = 1, body % nbrs(k) % num
-        !        print *, '      ', body % nbrs(k) % ix(i), body % nbrs(k) % iy(i)
-        !    end do
-        !end do 
 
-        !print *, ''
-        !print *, '' 
-
-        !do i = 1, body % num_pos()
-        !    do j = 1, body % num_pos()
-        !        print *, i, j, body % mat(i,j)
-        !    end do
-        !    print *, ''
-        !end do
+        do i = 1, body % num_pos()
+            do j = 1, body % num_pos()
+                print *, i, j, body % a(i,j), body % a(i,j) - body % a(j,i)
+            end do
+            print *, ''
+        end do
 
 
     end subroutine body_test
