@@ -216,8 +216,7 @@ contains
                 do k = 1, this % nbrs(i) % num
                     d1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
                     d2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-                    this % mat(i,j) = this % mat(i,j) + d1*d2*ds**2
-                    print *, i, j, this % nbrs(i) % pos(k) 
+                    this % mat(i,j) = this % mat(i,j) + d1*d2
                 end do
                 this % mat(j,i) = this % mat(i,j)
             end do 
@@ -274,8 +273,7 @@ contains
         else
             kx = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dx))
             ky = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dy))
-            val = (kx * ky)/(ds**2)
-            !val = kx * ky
+            val = kx * ky
         end if
     end function kernel
 
