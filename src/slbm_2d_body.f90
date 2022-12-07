@@ -130,10 +130,10 @@ contains
             call this % nbrs(k) % set_to_zero()
 
             ! Get search indices for neighbors which are inside mesh
-            i_min = ceiling((this % pos(k) % x - 2.0_wp*ds)/ds)
-            j_min = ceiling((this % pos(k) % y - 2.0_wp*ds)/ds)
-            i_max = floor((this % pos(k) % x + 2.0_wp*ds)/ds)
-            j_max = floor((this % pos(k) % y + 2.0_wp*ds)/ds)
+            i_min = ceiling((this % pos(k) % x - 2.0_wp*ds)/ds) + 1_wp
+            j_min = ceiling((this % pos(k) % y - 2.0_wp*ds)/ds) + 1_wp
+            i_max = floor((this % pos(k) % x + 2.0_wp*ds)/ds) + 1_wp
+            j_max = floor((this % pos(k) % y + 2.0_wp*ds)/ds) + 1_wp
             i_min = min(max(i_min,1), num_x)
             j_min = min(max(j_min,1), num_y)
             i_max = min(max(i_max,1), num_x)
@@ -177,7 +177,6 @@ contains
         real(wp)                     :: kval2
         integer(ip)                  :: i,j,k
 
-        ! Still not quite right ... need to do this another way. 
         ! Create A matrix for finding velocity corrections, Ax=b
         this % a = 0.0_wp
         do i = 1, this % num_pos()
@@ -185,11 +184,6 @@ contains
                 do k = 1, this % nbrs(i) % num
                     kval1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
                     kval2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-                    this % a(i,j) = this % a(i,j) + kval1*kval2
-                end do
-                do k = 1, this % nbrs(j) % num
-                    kval1 = kernel(this % nbrs(j) % pos(k), this % pos(i), ds)
-                    kval2 = kernel(this % nbrs(j) % pos(k), this % pos(j), ds)
                     this % a(i,j) = this % a(i,j) + kval1*kval2
                 end do
             end do 
