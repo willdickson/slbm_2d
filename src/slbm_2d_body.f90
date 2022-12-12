@@ -13,6 +13,8 @@ module slbm_2d_body
     use slbm_2d_line_seg, only : intersect
     use slbm_2d_line_seg, only : is_chain
     use slbm_2d_spmat,    only : spmat_t
+    use minres,           only : minres_ez_t
+    use minres,           only : minres_info_t
 
     implicit none
     private
@@ -24,9 +26,9 @@ module slbm_2d_body
         type(vector_t), allocatable :: vel(:)    ! velocities of body point
         type(nbrs_t), allocatable   :: nbrs(:)   ! neighboring mesh pos
         real(wp), allocatable       :: rho(:)    ! density at body points
-        real(wp), allocatable       :: a(:,:)    ! A matrix for velocity correction Ax=b
-        type(spmat_t)               :: aa        ! A matrix for velocity correction Ax=b
+        type(spmat_t)               :: a         ! A matrix for velocity correction Ax=b
         type(vector_t), allocatable :: b(:)      ! b vectors for velocity correction
+        type(vector_t), allocatable :: du(:)     ! velocity corrections
     contains
         private
         procedure, public  :: update
@@ -66,13 +68,14 @@ contains
         allocate(body % rho(size(pos)))
         body % rho = 0.0_wp
 
-        allocate(body % a(size(pos), size(pos)))
-        body % a = 0.0_wp
-
-        body % aa = spmat_t(size(pos)*size(pos))
+        body % a = spmat_t(size(pos))
 
         allocate(body % b(size(pos)))
         body % b = vector_t(0.0_wp, 0.0_wp)
+
+        allocate(body % du(size(pos))) 
+        body % du = vector_t(0.0_wp, 0.0_wp)
+
 
         if (.not. body % check_pos()) then
             print *, 'body is not a simple curve'
@@ -176,6 +179,8 @@ contains
         class(body_t), intent(inout) :: this    
         type(mesh_t), intent(in)     :: mesh    
         real(wp), intent(in)         :: ds
+        type(minres_ez_t)            :: minres_ez
+        type(minres_info_t)          :: minres_info
         real(wp)                     :: kval
         real(wp)                     :: kval1
         real(wp)                     :: kval2
@@ -184,9 +189,7 @@ contains
         integer(ip)                  :: i,j,k
 
         ! Create A matrix for finding velocity corrections, Ax=b
-        this % a = 0.0_wp
-
-        this % aa % nnz = 0_ip
+        this % a % nnz = 0_ip
         cnt = 0_ip
         do i = 1, this % num_pos()
             do j = 1, this % num_pos()
@@ -194,18 +197,19 @@ contains
                 do k = 1, this % nbrs(i) % num
                     kval1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
                     kval2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-                    this % a(i,j) = this % a(i,j) + kval1*kval2
                     aij = aij + kval1*kval2
                 end do
-                if (aij /= 0.0_wp) then
+                if (aij > 0.0_wp) then
                     cnt = cnt + 1_ip
-                    this % aa % ix(cnt) = i
-                    this % aa % iy(cnt) = j
-                    this % aa % val(cnt) = aij
+                    this % a % nnz = cnt
+                    this % a % ix(cnt) = i
+                    this % a % jy(cnt) = j
+                    this % a % val(cnt) = aij
                 end if
             end do 
         end do
 
+        ! DEBUG: something wrong with b vector ... all zeros
         ! Create b vector for finding velocity corrections
         do i = 1, this % num_pos()
             this % b(i) = vector_t(0.0_wp, 0.0_wp)
@@ -214,6 +218,24 @@ contains
                 this % b(i) = this % b(i) - kval * this % nbrs(i) % u(k)
             end do
         end do
+
+        ! Solve linear system
+        minres_ez % checka = .true.
+        minres_ez % precon = .false.
+        call minres_ez % print()
+
+
+        ! DEBUG, temporary arrays getting created ... maybe need to 
+        ! change b and du from arrays of vectors to arrays.
+        call minres_ez % solve(   & 
+            this % a % ix,        & 
+            this % a % jy,        &
+            this % a % val,       &
+            this % b % x,         &
+            this % du % x,        &
+            minres_info           &
+            )
+        call minres_info % print()
 
     end subroutine corrector
 

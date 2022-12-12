@@ -40,9 +40,9 @@ contains
         real(wp), parameter         :: s1 = 0.5_wp
         real(wp), parameter         :: x0 = 0.5_wp
         real(wp), parameter         :: y0 = 0.5_wp
-        real(wp), parameter         :: amp_x = 0.01_wp
-        real(wp), parameter         :: amp_y = 0.01_wp
-        integer(ip), parameter      :: num_pts = 5 
+        real(wp), parameter         :: amp_x = 0.2_wp
+        real(wp), parameter         :: amp_y = 0.2_wp
+        integer(ip), parameter      :: num_pts = 50 
 
         character(:), allocatable   :: filename
         type(config_t)              :: config
@@ -50,6 +50,7 @@ contains
         type(body_t)                :: body
         type(vector_t), allocatable :: pts(:)
         real(wp), allocatable       :: s(:)
+        real(wp), allocatable       :: a(:,:)
         integer(ip)                 :: i,j,k
 
         filename = './example/config.toml'
@@ -66,12 +67,22 @@ contains
         call body % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
         call body % corrector(sim % mesh, config % ds)
 
-        do i = 1, body % num_pos()
-            do j = 1, body % num_pos()
-                print *, i, j, body % a(i,j), body % a(i,j) - body % a(j,i)
-            end do
-            print *, ''
-        end do
+        print *, 'nnz = ', body % a % nnz
+        print *, 'density = ', body % a % density()
+
+        !do i = 1, body % a % nnz
+        !    print *, body % a % ix(i), body % a % jy(i), body % a % val(i)
+        !end do
+
+
+        !a = body % a % as_dense_mat()
+
+        !do i = 1, size(a,1) 
+        !    do j = 1, size(a,2)
+        !        print *, i, j, a(i,j), a(i,j) - a(j,i)
+        !    end do
+        !    print *, ''
+        !end do
 
 
     end subroutine body_test
