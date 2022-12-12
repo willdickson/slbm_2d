@@ -233,7 +233,8 @@ contains
             this % a % val,       &
             this % b % x,         &
             this % du % x,        &
-            minres_info           &
+            minres_info,          &
+            nnz = this % a % nnz  &
             )
         call minres_info % print()
 
