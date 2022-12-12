@@ -224,7 +224,6 @@ contains
         minres_ez % precon = .false.
         call minres_ez % print()
 
-
         ! DEBUG, temporary arrays getting created ... maybe need to 
         ! change b and du from arrays of vectors to arrays.
         call minres_ez % solve(   & 
@@ -234,7 +233,7 @@ contains
             this % b % x,         &
             this % du % x,        &
             minres_info,          &
-            nnz = this % a % nnz  &
+            this % a % nnz        &
             )
         call minres_info % print()
 
