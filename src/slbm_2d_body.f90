@@ -12,6 +12,7 @@ module slbm_2d_body
     use slbm_2d_line_seg, only : line_seg_t
     use slbm_2d_line_seg, only : intersect
     use slbm_2d_line_seg, only : is_chain
+    use slbm_2d_spmat,    only : spmat_t
 
     implicit none
     private
@@ -24,6 +25,7 @@ module slbm_2d_body
         type(nbrs_t), allocatable   :: nbrs(:)   ! neighboring mesh pos
         real(wp), allocatable       :: rho(:)    ! density at body points
         real(wp), allocatable       :: a(:,:)    ! A matrix for velocity correction Ax=b
+        type(spmat_t)               :: aa        ! A matrix for velocity correction Ax=b
         type(vector_t), allocatable :: b(:)      ! b vectors for velocity correction
     contains
         private
@@ -66,6 +68,8 @@ contains
 
         allocate(body % a(size(pos), size(pos)))
         body % a = 0.0_wp
+
+        body % aa = spmat_t(size(pos)*size(pos))
 
         allocate(body % b(size(pos)))
         body % b = vector_t(0.0_wp, 0.0_wp)
@@ -175,17 +179,30 @@ contains
         real(wp)                     :: kval
         real(wp)                     :: kval1
         real(wp)                     :: kval2
+        real(wp)                     :: aij
+        integer(ip)                  :: cnt
         integer(ip)                  :: i,j,k
 
         ! Create A matrix for finding velocity corrections, Ax=b
         this % a = 0.0_wp
+
+        this % aa % nnz = 0_ip
+        cnt = 0_ip
         do i = 1, this % num_pos()
             do j = 1, this % num_pos()
+                aij = 0.0_wp
                 do k = 1, this % nbrs(i) % num
                     kval1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
                     kval2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
                     this % a(i,j) = this % a(i,j) + kval1*kval2
+                    aij = aij + kval1*kval2
                 end do
+                if (aij /= 0.0_wp) then
+                    cnt = cnt + 1_ip
+                    this % aa % ix(cnt) = i
+                    this % aa % iy(cnt) = j
+                    this % aa % val(cnt) = aij
+                end if
             end do 
         end do
 
