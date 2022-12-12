@@ -49,6 +49,7 @@ contains
         type(simulation_t)          :: sim
         type(body_t)                :: body
         type(vector_t), allocatable :: pts(:)
+        type(vector_t), allocatable :: du(:)
         real(wp), allocatable       :: s(:)
         real(wp), allocatable       :: a(:,:)
         integer(ip)                 :: i,j,k
@@ -64,8 +65,10 @@ contains
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
         body = body_t(BODY_TYPE_OPEN, pts)
 
+        allocate(du(size(pts)), source=vector_t(0.0_wp, 0.0_wp))
+
         call body % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
-        call body % corrector(sim % mesh, config % ds)
+        call body % corrector(sim % mesh, config % ds, du)
 
         print *, 'nnz = ', body % a % nnz
         print *, 'density = ', body % a % density()
