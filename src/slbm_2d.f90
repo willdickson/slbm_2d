@@ -4,6 +4,7 @@ module slbm_2d
     use slbm_2d_config,     only : config_t
     use slbm_2d_simulation, only : simulation_t
 
+    use slbm_2d_ibsol,      only : ibsol_t
     use slbm_2d_body,       only : body_t
     use slbm_2d_const,      only : BODY_TYPE_OPEN
     use slbm_2d_const,      only : PI
@@ -48,6 +49,7 @@ contains
         type(config_t)              :: config
         type(simulation_t)          :: sim
         type(body_t)                :: body
+        type(body_t)                :: bodies(2)
         type(vector_t), allocatable :: pts(:)
         type(vector_t), allocatable :: du(:)
         real(wp), allocatable       :: s(:)
@@ -72,6 +74,11 @@ contains
 
         print *, 'nnz = ', body % a % nnz
         print *, 'density = ', body % a % density()
+
+        !bodies(1) = body
+        !bodies(2) = body
+        !print *, size(bodies(1) % pos), bodies(1) % pos % x
+        !print *, size(bodies(2) % nbrs)
 
         !do i = 1, body % a % nnz
         !    print *, body % a % ix(i), body % a % jy(i), body % a % val(i)

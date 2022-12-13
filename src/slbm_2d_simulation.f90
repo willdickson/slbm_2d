@@ -29,6 +29,7 @@ module slbm_2d_simulation
     use slbm_2d_mesh,     only : mesh_t
     use slbm_2d_body,     only : body_t
     use slbm_2d_state,    only : state_t
+    use slbm_2d_ibsol,    only : ibsol_t
     use slbm_2d_bndry,    only : bndry_t
     use slbm_2d_bndry,    only : side_id_to_name
     use slbm_2d_config,   only : config_t
@@ -55,6 +56,7 @@ module slbm_2d_simulation
         type(state_t)   :: last    ! state from last step
         type(state_t)   :: pred    ! state from predictor step
         type(state_t)   :: curr    ! state from current step
+        type(ibsol_t)   :: ibsol   ! immersed boundary solver
         type(mesh_t)    :: mesh    ! x,y mesh
     contains
         private

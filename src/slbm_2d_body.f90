@@ -25,12 +25,13 @@ module slbm_2d_body
         type(vector_t), allocatable :: pos(:)    ! positions of body points 
         type(vector_t), allocatable :: vel(:)    ! velocities of body point
         type(nbrs_t), allocatable   :: nbrs(:)   ! neighboring mesh pos
+        real(wp), allocatable       :: rho(:)    ! density at body points
+        ! --------------------------------------------------------------------------
         type(spmat_t)               :: a         ! A matrix for velocity correction 
         real(wp), allocatable       :: bx(:)     ! b vector for velocity corr. x comp.
         real(wp), allocatable       :: by(:)     ! b vector for velocity corr. y comp. 
         real(wp), allocatable       :: dux(:)    ! velocity correction x component 
         real(wp), allocatable       :: duy(:)    ! velocity correction y component
-        real(wp), allocatable       :: rho(:)    ! density at body points
     contains
         private
         procedure, public  :: update
@@ -59,16 +60,18 @@ contains
         body % type_id = type_id
         body % pos  = pos
         allocate(body % vel(size(pos)), source=vector_t(0.0_wp, 0.0_wp))
+        allocate(body % rho(size(pos)), source=0.0_wp)
         allocate(body % nbrs(size(pos)))
         do i = 1, size(pos)
             call body % nbrs(i) % set_to_zero()
         end do
+        ! ------------------------------------------------
         body % a = spmat_t(size(pos))
         allocate(body % bx(size(pos)),  source=0.0_wp)
         allocate(body % by(size(pos)),  source=0.0_wp)
         allocate(body % dux(size(pos)), source=0.0_wp)
         allocate(body % duy(size(pos)), source=0.0_wp)
-        allocate(body % rho(size(pos)), source=0.0_wp)
+        ! ------------------------------------------------
         if (.not. body % check_pos()) then
             print *, 'body is not a simple curve'
             stop
@@ -227,8 +230,8 @@ contains
             minres_info,          &
             this % a % nnz        &
             )
-        !call minres_info % print()
-        if (minres_info % istop <= 2) then
+        call minres_info % print()
+        if (minres_info % istop >= 2) then
             print *, 'minres istop > 2 for dux velocity correction'
             stop 
         end if
@@ -242,8 +245,8 @@ contains
             minres_info,          &
             this % a % nnz        &
             )
-        !call minres_info % print()
-        if (minres_info % istop <= 2) then
+        call minres_info % print()
+        if (minres_info % istop >= 2) then
             print *, 'minres istop > 2 for  duy velocity correction'
             stop 
         end if

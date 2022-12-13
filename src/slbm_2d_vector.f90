@@ -19,8 +19,8 @@ module slbm_2d_vector
         procedure, pass(this) :: scalar_mul 
         procedure, pass(this) :: div_vector 
         procedure, pass(this) :: div_scalar 
-        procedure, pass(this) :: assign_vector
-        procedure, pass(this) :: assign_scalar
+        !procedure, pass(this) :: assign_vector  ! Don't need??
+        !procedure, pass(this) :: assign_scalar  ! Don't need??
         procedure, pass(this) :: equal
         procedure, pass(this) :: not_equal
 
@@ -37,8 +37,8 @@ module slbm_2d_vector
         generic, public ::   operator(/) => div_vector, &
                                             div_scalar
 
-        generic, public :: assignment(=) => assign_vector, &
-                                            assign_scalar
+        !generic, public :: assignment(=) => assign_vector, &
+        !                                    assign_scalar
         generic, public ::  operator(==) => equal
         generic, public ::  operator(/=) => not_equal
     end type
@@ -147,20 +147,26 @@ contains
     end function div_scalar
 
 
-    pure subroutine assign_vector(this,v) 
-        class(vector_t), intent(inout) :: this
-        type(vector_t),  intent(in)    :: v 
-        this % x = v % x
-        this % y = v % y
-    end subroutine assign_vector
+    ! Don't seem to need these
+    ! -------------------------------------------------
+    !pure subroutine assign_vector(this,v) 
+    !    class(vector_t), intent(inout) :: this
+    !    type(vector_t),  intent(in)    :: v 
+    !    this % x = v % x
+    !    this % y = v % y
+    !end subroutine assign_vector
+    ! -------------------------------------------------
 
 
-    pure subroutine assign_scalar(this,a)
-        class(vector_t), intent(inout) :: this
-        real(wp), intent(in)           :: a
-        this % x = a
-        this % y = a
-    end subroutine assign_scalar
+    ! Don't seem to need these
+    ! -------------------------------------------------
+    !pure subroutine assign_scalar(this,a)
+    !    class(vector_t), intent(inout) :: this
+    !    real(wp), intent(in)           :: a
+    !    this % x = a
+    !    this % y = a
+    !end subroutine assign_scalar
+    ! -------------------------------------------------
 
 
     elemental function equal(this, v) result(res)
