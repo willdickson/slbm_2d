@@ -6,6 +6,7 @@ module slbm_2d
 
     use slbm_2d_ibsol,      only : ibsol_t
     use slbm_2d_body,       only : body_t
+    use slbm_2d_const,      only : VECTOR_ZERO
     use slbm_2d_const,      only : BODY_TYPE_OPEN
     use slbm_2d_const,      only : PI
     use slbm_2d_line_seg,   only : line_seg_t
@@ -67,7 +68,7 @@ contains
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
         body = body_t(BODY_TYPE_OPEN, pts)
 
-        allocate(du(size(pts)), source=vector_t(0.0_wp, 0.0_wp))
+        allocate(du(size(pts)), source=VECTOR_ZERO) 
 
         call body % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
         call body % corrector(sim % mesh, config % ds, du)

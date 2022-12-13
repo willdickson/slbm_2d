@@ -1,5 +1,6 @@
 module slbm_2d_nbrs
     use slbm_2d_kinds,  only : wp, ip
+    use slbm_2d_const,  only : VECTOR_ZERO
     use slbm_2d_const,  only : BODY_PT_MAX_NBRS
     use slbm_2d_vector, only : vector_t
 
@@ -24,8 +25,8 @@ contains
         this % num = 0_ip
         this % ix  = 0_ip
         this % iy  = 0_ip
-        this % pos = vector_t(0.0_wp, 0.0_wp)
-        this % u   = vector_t(0.0_wp, 0.0_wp)
+        this % pos = VECTOR_ZERO 
+        this % u   = VECTOR_ZERO 
     end subroutine set_to_zero
 
 end module slbm_2d_nbrs

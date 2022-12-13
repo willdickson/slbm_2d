@@ -7,6 +7,10 @@ module slbm_2d_const
 
     public :: PI                   ! mathematical constant (3.145...)
 
+    ! Vector constants
+    public :: VECTOR_ZERO          ! the zero vector 
+    public :: VECTOR_ONES          ! the ones vector
+
     ! Body type ids
     public :: BODY_TYPE_OPEN       ! Open curve body type
     public :: BODY_TYPE_CLOSED     ! Closed curve body type
@@ -57,6 +61,10 @@ module slbm_2d_const
 
     ! ------------------------------------------------------------------
     real(wp),    parameter :: PI  = 4_wp*atan(1.0_wp)
+
+    ! Vector constatns
+    type(vector_t), parameter :: VECTOR_ZERO = vector_t(0.0_wp, 0.0_wp)
+    type(vector_t), parameter :: VECTOR_ONES = vector_t(1.0_wp, 1.0_wp)
 
     ! Body type ids
     integer(ip), parameter :: BODY_TYPE_OPEN    = 1 

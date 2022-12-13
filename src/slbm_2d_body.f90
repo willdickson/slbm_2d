@@ -2,6 +2,7 @@ module slbm_2d_body
 
     use slbm_2d_kinds,    only : wp, ip
     use slbm_2d_const,    only : PI
+    use slbm_2d_const,    only : VECTOR_ZERO
     use slbm_2d_const,    only : BODY_TYPE_OPEN
     use slbm_2d_const,    only : BODY_TYPE_CLOSED
     use slbm_2d_const,    only : BODY_TYPE_UNKNOWN
@@ -59,7 +60,7 @@ contains
 
         body % type_id = type_id
         body % pos  = pos
-        allocate(body % vel(size(pos)), source=vector_t(0.0_wp, 0.0_wp))
+        allocate(body % vel(size(pos)), source=VECTOR_ZERO)
         allocate(body % rho(size(pos)), source=0.0_wp)
         allocate(body % nbrs(size(pos)))
         do i = 1, size(pos)
@@ -175,6 +176,7 @@ contains
         type(mesh_t), intent(in)      :: mesh    
         real(wp), intent(in)          :: ds
         type(vector_t), intent(out)   :: du(:)
+
         type(minres_ez_t)             :: minres_ez
         type(minres_info_t)           :: minres_info
         real(wp)                      :: kval
