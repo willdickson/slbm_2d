@@ -75,27 +75,27 @@ contains
         allocate(du(size(pts)), source=VECTOR_ZERO) 
 
         call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
-        call sim % ibsol % corrector(sim % mesh, config % ds, du)
+        call sim % ibsol % corrector(config % ds, sim % curr % u)
 
-        print *, 'nnz = ', sim % ibsol % a % nnz
-        print *, 'density = ', sim % ibsol % a % density()
+        !print *, 'nnz = ', sim % ibsol % a % nnz
+        !print *, 'density = ', sim % ibsol % a % density()
 
-        do k = 1, sim % ibsol % a % nnz
-            ix  = sim % ibsol % a % ix(k)
-            jy  = sim % ibsol % a % jy(k)
-            aij = sim % ibsol % a % val(k)
-            print *, ix, jy, aij 
-        end do
+        !do k = 1, sim % ibsol % a % nnz
+        !    ix  = sim % ibsol % a % ix(k)
+        !    jy  = sim % ibsol % a % jy(k)
+        !    aij = sim % ibsol % a % val(k)
+        !    print *, ix, jy, aij 
+        !end do
 
 
-        a = sim % ibsol % a % as_dense_mat()
+        !a = sim % ibsol % a % as_dense_mat()
 
-        do i = 1, size(a,1) 
-            do j = 1, size(a,2)
-                print *, i, j, a(i,j), a(i,j) - a(j,i)
-            end do
-            print *, ''
-        end do
+        !do i = 1, size(a,1) 
+        !    do j = 1, size(a,2)
+        !        print *, i, j, a(i,j), a(i,j) - a(j,i)
+        !    end do
+        !    print *, ''
+        !end do
 
 
     end subroutine body_test

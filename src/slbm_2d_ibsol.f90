@@ -67,23 +67,26 @@ contains
     end subroutine ibsol_update
 
 
-    subroutine ibsol_corrector(this, mesh, ds, du)
+    subroutine ibsol_corrector(this, ds, u)
         class(ibsol_t), intent(inout), target :: this    ! immersed boundry solver
-        type(mesh_t),   intent(in)            :: mesh    ! x and  y meshes
         real(wp),       intent(in)            :: ds      ! mesh spacing
-        type(vector_t), intent(out)           :: du(:)   ! correction velocities
+        type(vector_t), intent(inout)         :: u(:,:)  ! velocity mesh to be corrected
+
 
         type(body_t), pointer   :: body         ! alias for current body
         type(minres_ez_t)       :: minres_ez    ! sparse linear solver
         type(minres_info_t)     :: minres_info  ! linear solver info
-        real(wp)                :: kvali        ! kernel value for ith pos
-        real(wp)                :: kvalj        ! kernel value for jth pos
+        real(wp)                :: kerni        ! kernel value for ith pos
+        real(wp)                :: kernj        ! kernel value for jth pos
         real(wp)                :: aij          ! A matrix value at i,j
         integer(ip)             :: cnt          ! element counter 
         integer(ip)             :: n            ! loop index for bodies
         integer(ip)             :: i            ! loop index for body pos points
         integer(ip)             :: j            ! loop index for body pos points
         integer(ip)             :: k            ! loop index for body nbr points
+        integer(ip)             :: ix           ! x coord. mesh index of nbr pt
+        integer(ip)             :: jy           ! y coord. mesh index of nbr pt
+
 
         ! Create A matrix for finding velocity corrections, Ax=b
         this % a % nnz = 0_ip
@@ -95,9 +98,9 @@ contains
                 do j = 1, body % num_pos()
                     aij = 0.0_wp
                     do k = 1, body % nbrs(i) % num 
-                        kvali = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
-                        kvalj = kernel(body % nbrs(i) % pos(k), body % pos(j), ds)
-                        aij = aij + kvali*kvalj
+                        kerni = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
+                        kernj = kernel(body % nbrs(i) % pos(k), body % pos(j), ds)
+                        aij = aij + kerni*kernj
                     end do
                     if (aij > 0.0_wp) then
                         cnt = cnt + 1_ip
@@ -119,9 +122,9 @@ contains
                 this % bx(cnt) = 0.0_wp
                 this % by(cnt) = 0.0_wp
                 do k = 1, body % nbrs(i) % num
-                    kvali = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
-                    this % bx(cnt) = this % bx(cnt) - kvali * body % nbrs(i) % u(k) % x 
-                    this % by(cnt) = this % by(cnt) - kvali * body % nbrs(i) % u(k) % y 
+                    kerni = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
+                    this % bx(cnt) = this % bx(cnt) - kerni * body % nbrs(i) % u(k) % x 
+                    this % by(cnt) = this % by(cnt) - kerni * body % nbrs(i) % u(k) % y 
                 end do
             end do
         end do
@@ -163,8 +166,22 @@ contains
             stop 
         end if
 
-        du % x = this % vx
-        du % y = this % vy
+        ! Apply velocity corrections to mesh
+        cnt = 0_ip
+        do n = 1, this % num_body()
+            body => this % body(n)
+            do i = 1, body % num_pos()
+                cnt = cnt + 1
+                do k = 1, body % nbrs(i) % num
+                    kerni = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
+                    ix = body % nbrs(i) % ix(k)
+                    jy = body % nbrs(i) % jy(k)
+                    u(ix, jy) % x = u(ix,jy) % x + (kerni * this % vx(cnt))
+                    u(ix, jy) % y = u(ix,jy) % y + (kerni * this % vy(cnt))
+                    print *, ix, jy,  u(ix, jy) % x, u(ix, jy) % y
+                end do
+            end do
+        end do
 
     end subroutine ibsol_corrector
 

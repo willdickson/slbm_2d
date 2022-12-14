@@ -137,7 +137,7 @@ contains
                     nnbrs = this % nbrs(k) % num + 1
                     this % nbrs(k) % num  = nnbrs
                     this % nbrs(k) % ix(nnbrs) = i
-                    this % nbrs(k) % iy(nnbrs) = j
+                    this % nbrs(k) % jy(nnbrs) = j
                     this % nbrs(k) % pos(nnbrs) = vector_t(xm, ym)
                     this % nbrs(k) % u(nnbrs) = state % u(i,j) 
 

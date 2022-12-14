@@ -67,6 +67,7 @@ module slbm_2d_simulation
         procedure          :: incr_time
         procedure          :: predictor
         procedure          :: corrector
+        procedure          :: ib_update
         procedure          :: check_stop_cond
         procedure          :: steady_conv_test
         procedure          :: check_save_dir
@@ -115,6 +116,7 @@ contains
             call this % set_bndry_cond(PRED_STATE)
             call this % corrector()
             call this % set_bndry_cond(CURR_STATE)
+            call this % ib_update(time)
             call this % check_stop_cond(time, done, serr)
             call this % save_data(iter, time)
             call this % print_info(iter, time, serr)
@@ -269,6 +271,29 @@ contains
         end do
 
     end subroutine corrector
+
+
+    subroutine ib_update(this, time)
+        class(simulation_t), intent(inout) :: this
+        real(wp), intent(in)               :: time  
+
+        ! TO DO:  skip this if there are no bodies
+
+        ! Update immersed body, e.g. move objects, find nbrs
+        call this % ibsol % update(    & 
+            this % curr,               &
+            this % mesh,               &
+            this % config % ds,        & 
+            time                       &
+            )
+
+        ! Calculate and apply immersed boundry velocity correctino
+        call this % ibsol % corrector( &
+            this % config % ds,        &
+            this % curr % u            &
+            )
+
+    end subroutine ib_update
 
 
     subroutine check_stop_cond(this, time, done, serr) 
