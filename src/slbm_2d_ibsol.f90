@@ -144,7 +144,7 @@ contains
             minres_info,          &
             this % a % nnz        &
             )
-        call minres_info % print()
+        !call minres_info % print()
         if (minres_info % istop >= 2) then
             print *, 'minres istop > 2 for dux velocity correction'
             stop 
@@ -160,7 +160,7 @@ contains
             minres_info,          &
             this % a % nnz        &
             )
-        call minres_info % print()
+        !call minres_info % print()
         if (minres_info % istop >= 2) then
             print *, 'minres istop > 2 for  duy velocity correction'
             stop 
@@ -178,7 +178,7 @@ contains
                     jy = body % nbrs(i) % jy(k)
                     u(ix, jy) % x = u(ix,jy) % x + (kerni * this % vx(cnt))
                     u(ix, jy) % y = u(ix,jy) % y + (kerni * this % vy(cnt))
-                    print *, ix, jy,  u(ix, jy) % x, u(ix, jy) % y
+                    !print *, ix, jy,  u(ix, jy) % x, u(ix, jy) % y
                 end do
             end do
         end do
@@ -189,7 +189,11 @@ contains
     function ibsol_num_body(this) result(num)
         class(ibsol_t), intent(in) :: this
         integer(ip)                :: num
-        num = size(this % body)
+        if (.not. allocated(this % body)) then
+            num = 0_ip
+        else
+            num = size(this % body)
+        end if
     end function ibsol_num_body
 
 

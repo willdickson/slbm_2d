@@ -276,23 +276,21 @@ contains
     subroutine ib_update(this, time)
         class(simulation_t), intent(inout) :: this
         real(wp), intent(in)               :: time  
+        if (this % ibsol % num_body() > 0) then
+            ! Update immersed body, e.g. move objects, find nbrs
+            call this % ibsol % update(    & 
+                this % curr,               &
+                this % mesh,               &
+                this % config % ds,        & 
+                time                       &
+                )
 
-        ! TO DO:  skip this if there are no bodies
-
-        ! Update immersed body, e.g. move objects, find nbrs
-        call this % ibsol % update(    & 
-            this % curr,               &
-            this % mesh,               &
-            this % config % ds,        & 
-            time                       &
-            )
-
-        ! Calculate and apply immersed boundry velocity correctino
-        call this % ibsol % corrector( &
-            this % config % ds,        &
-            this % curr % u            &
-            )
-
+            ! Calculate and apply immersed boundry velocity correctino
+            call this % ibsol % corrector( &
+                this % config % ds,        &
+                this % curr % u            &
+                )
+        end if
     end subroutine ib_update
 
 
