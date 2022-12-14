@@ -6,6 +6,7 @@ module slbm_2d_ibsol
     use slbm_2d_mesh,   only : mesh_t
     use slbm_2d_spmat,  only : spmat_t
     use slbm_2d_state,  only : state_t
+    use slbm_2d_funcs,  only : kernel
     use minres,         only : minres_ez_t
     use minres,         only : minres_info_t
 
@@ -67,24 +68,101 @@ contains
 
 
     subroutine ibsol_corrector(this, mesh, ds, du)
-        class(ibsol_t), intent(inout) :: this    ! immersed boundry solver
-        type(mesh_t), intent(in)      :: mesh    ! x and  y meshes
-        real(wp), intent(in)          :: ds      ! mesh spacing
-        type(vector_t), intent(out)   :: du(:)   ! correction velocities
+        class(ibsol_t), intent(inout), target :: this    ! immersed boundry solver
+        type(mesh_t),   intent(in)            :: mesh    ! x and  y meshes
+        real(wp),       intent(in)            :: ds      ! mesh spacing
+        type(vector_t), intent(out)           :: du(:)   ! correction velocities
 
-        type(minres_ez_t)             :: minres_ez
-        type(minres_info_t)           :: minres_info
-        real(wp)                      :: kval
-        real(wp)                      :: kval1
-        real(wp)                      :: kval2
-        real(wp)                      :: aij
-        integer(ip)                   :: cnt
-        integer(ip)                   :: i,j,k
+        type(body_t), pointer   :: body         ! alias for current body
+        type(minres_ez_t)       :: minres_ez    ! sparse linear solver
+        type(minres_info_t)     :: minres_info  ! linear solver info
+        real(wp)                :: kvali        ! kernel value for ith pos
+        real(wp)                :: kvalj        ! kernel value for jth pos
+        real(wp)                :: aij          ! A matrix value at i,j
+        integer(ip)             :: cnt          ! element counter 
+        integer(ip)             :: n            ! loop index for bodies
+        integer(ip)             :: i            ! loop index for body pos points
+        integer(ip)             :: j            ! loop index for body pos points
+        integer(ip)             :: k            ! loop index for body nbr points
 
+        ! Create A matrix for finding velocity corrections, Ax=b
         this % a % nnz = 0_ip
         cnt = 0_ip
 
+        do n = 1, this % num_body()
+            body => this % body(n)
+            do i = 1, body % num_pos()
+                do j = 1, body % num_pos()
+                    aij = 0.0_wp
+                    do k = 1, body % nbrs(i) % num 
+                        kvali = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
+                        kvalj = kernel(body % nbrs(i) % pos(k), body % pos(j), ds)
+                        aij = aij + kvali*kvalj
+                    end do
+                    if (aij > 0.0_wp) then
+                        cnt = cnt + 1_ip
+                        body % a % nnz = cnt
+                        body % a % ix(cnt) = i
+                        body % a % jy(cnt) = j
+                        body % a % val(cnt) = aij
+                    end if
+                end do
+            end do
+        end do
 
+        ! Create b vector for finding velocity corrections
+        cnt = 0_ip
+        do n = 1, this % num_body()
+            body => this % body(n)
+            do i = 1, body % num_pos()
+                cnt = cnt + 1
+                this % bx(cnt) = 0.0_wp
+                this % by(cnt) = 0.0_wp
+                do k = 1, body % nbrs(i) % num
+                    kvali = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
+                    this % bx(cnt) = this % bx(cnt) - kvali * body % nbrs(i) % u(k) % x 
+                    this % by(cnt) = this % by(cnt) - kvali * body % nbrs(i) % u(k) % y 
+                end do
+            end do
+        end do
+
+        ! Solve linear system
+        minres_ez % checka = .true.
+        minres_ez % precon = .true.
+        !call minres_ez % print()
+
+        call minres_ez % solve(   & 
+            this % a % ix,        & 
+            this % a % jy,        &
+            this % a % val,       &
+            this % bx,            &
+            this % vx,            &
+            minres_info,          &
+            this % a % nnz        &
+            )
+        call minres_info % print()
+        if (minres_info % istop >= 2) then
+            print *, 'minres istop > 2 for dux velocity correction'
+            stop 
+        end if
+
+        call minres_ez % solve(   & 
+            this % a % ix,        & 
+            this % a % jy,        &
+            this % a % val,       &
+            this % by,            &
+            this % vy,            &
+            minres_info,          &
+            this % a % nnz        &
+            )
+        call minres_info % print()
+        if (minres_info % istop >= 2) then
+            print *, 'minres istop > 2 for  duy velocity correction'
+            stop 
+        end if
+
+        du % x = this % vx
+        du % y = this % vy
 
     end subroutine ibsol_corrector
 
@@ -94,5 +172,6 @@ contains
         integer(ip)                :: num
         num = size(this % body)
     end function ibsol_num_body
+
 
 end module slbm_2d_ibsol

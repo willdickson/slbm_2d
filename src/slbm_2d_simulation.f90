@@ -34,8 +34,10 @@ module slbm_2d_simulation
     use slbm_2d_bndry,    only : side_id_to_name
     use slbm_2d_config,   only : config_t
     use slbm_2d_vector,   only : vector_t
-    use slbm_2d_vector,   only : dot
+    !use slbm_2d_vector,   only : dot
     use slbm_2d_vector,   only : mag 
+
+    use slbm_2d_funcs,    only : equilib_func
 
     use stdlib_io_npy,    only : save_npy
 
@@ -393,25 +395,6 @@ contains
         end if
     end subroutine print_info
     
-
-    function equilib_func(rho, u, k) result(feq)
-        real(wp),       intent(in)   :: rho ! fluid density
-        type(vector_t), intent(in)   :: u   ! fluid velocity vector
-        integer(ip),    intent(in)   :: k   ! lattice index
-        real(wp)                     :: feq ! kth comp. of equilibrum dist.
-
-        real(wp)   :: wt    ! k-th lattice weight
-        real(wp)   :: uu    ! squared magnitude of velocity
-        real(wp)   :: eu    ! lattice velocity (ex,ey) to velocity (ux,uy)
-        real(wp)   :: eu2   ! square of eu
-
-        wt  = LATTICE_W(k)
-        uu  = dot(u,u)
-        eu  = dot(LATTICE_E(k),u)
-        eu2 = eu**2 
-        feq = rho*wt*(1.0_wp + A1*eu + A2*eu2 - A3*uu)
-    end function equilib_func
-
 
     function get_save_cnt_str(cnt) result(res)
         integer,intent(in)        :: cnt
