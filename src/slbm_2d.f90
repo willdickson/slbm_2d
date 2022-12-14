@@ -44,17 +44,19 @@ contains
         real(wp), parameter         :: y0 = 0.5_wp
         real(wp), parameter         :: amp_x = 0.2_wp
         real(wp), parameter         :: amp_y = 0.2_wp
-        integer(ip), parameter      :: num_pts = 50 
+        integer(ip), parameter      :: num_pts = 50_ip 
+        integer(ip), parameter      :: num_body = 1_ip
 
         character(:), allocatable   :: filename
         type(config_t)              :: config
         type(simulation_t)          :: sim
-        type(body_t)                :: body
-        type(body_t)                :: bodies(2)
+        type(body_t), allocatable   :: body(:)
         type(vector_t), allocatable :: pts(:)
         type(vector_t), allocatable :: du(:)
         real(wp), allocatable       :: s(:)
         real(wp), allocatable       :: a(:,:)
+        real(wp)                    :: aij
+        integer(ip)                 :: ix, jy
         integer(ip)                 :: i,j,k
 
         filename = './example/config.toml'
@@ -66,34 +68,34 @@ contains
         allocate(pts(size(s)))
         pts % x = x0 + amp_x*cos(2.0_wp*PI*s)
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
-        body = body_t(BODY_TYPE_OPEN, pts)
+        allocate(body(num_body))
+        body(1) = body_t(BODY_TYPE_OPEN, pts)
+        sim % ibsol  = ibsol_t(body)
 
         allocate(du(size(pts)), source=VECTOR_ZERO) 
 
-        call body % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
-        call body % corrector(sim % mesh, config % ds, du)
+        call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
+        call sim % ibsol % corrector(sim % mesh, config % ds, du)
 
-        print *, 'nnz = ', body % a % nnz
-        print *, 'density = ', body % a % density()
+        print *, 'nnz = ', sim % ibsol % a % nnz
+        print *, 'density = ', sim % ibsol % a % density()
 
-        !bodies(1) = body
-        !bodies(2) = body
-        !print *, size(bodies(1) % pos), bodies(1) % pos % x
-        !print *, size(bodies(2) % nbrs)
-
-        !do i = 1, body % a % nnz
-        !    print *, body % a % ix(i), body % a % jy(i), body % a % val(i)
-        !end do
+        do k = 1, sim % ibsol % a % nnz
+            ix  = sim % ibsol % a % ix(k)
+            jy  = sim % ibsol % a % jy(k)
+            aij = sim % ibsol % a % val(k)
+            print *, ix, jy, aij 
+        end do
 
 
-        !a = body % a % as_dense_mat()
+        a = sim % ibsol % a % as_dense_mat()
 
-        !do i = 1, size(a,1) 
-        !    do j = 1, size(a,2)
-        !        print *, i, j, a(i,j), a(i,j) - a(j,i)
-        !    end do
-        !    print *, ''
-        !end do
+        do i = 1, size(a,1) 
+            do j = 1, size(a,2)
+                print *, i, j, a(i,j), a(i,j) - a(j,i)
+            end do
+            print *, ''
+        end do
 
 
     end subroutine body_test

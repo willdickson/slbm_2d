@@ -13,10 +13,6 @@ module slbm_2d_body
     use slbm_2d_line_seg, only : line_seg_t
     use slbm_2d_line_seg, only : intersect
     use slbm_2d_line_seg, only : is_chain
-    use slbm_2d_spmat,    only : spmat_t
-    use slbm_2d_funcs,    only : kernel 
-    use minres,           only : minres_ez_t
-    use minres,           only : minres_info_t
 
     implicit none
     private
@@ -28,18 +24,12 @@ module slbm_2d_body
         type(vector_t), allocatable :: vel(:)    ! velocities of body point
         type(nbrs_t), allocatable   :: nbrs(:)   ! neighboring mesh pos
         real(wp), allocatable       :: rho(:)    ! density at body points
-        ! --------------------------------------------------------------------------
-        type(spmat_t)               :: a         ! A matrix for velocity correction 
-        real(wp), allocatable       :: bx(:)     ! b vector for velocity corr. x comp.
-        real(wp), allocatable       :: by(:)     ! b vector for velocity corr. y comp. 
-        real(wp), allocatable       :: dux(:)    ! velocity correction x component 
-        real(wp), allocatable       :: duy(:)    ! velocity correction y component
     contains
         private
         procedure, public  :: update
         procedure          :: update_pos_and_vel
         procedure          :: update_nbrs_and_rho
-        procedure, public  :: corrector
+        !procedure, public  :: corrector
         procedure, public  :: num_pos
         procedure          :: check_pos
     end type body_t
@@ -67,13 +57,6 @@ contains
         do i = 1, size(pos)
             call body % nbrs(i) % set_to_zero()
         end do
-        ! ------------------------------------------------
-        body % a = spmat_t(size(pos))
-        allocate(body % bx(size(pos)),  source=0.0_wp)
-        allocate(body % by(size(pos)),  source=0.0_wp)
-        allocate(body % dux(size(pos)), source=0.0_wp)
-        allocate(body % duy(size(pos)), source=0.0_wp)
-        ! ------------------------------------------------
         if (.not. body % check_pos()) then
             print *, 'body is not a simple curve'
             stop
@@ -170,94 +153,6 @@ contains
             end do 
         end do
     end subroutine update_nbrs_and_rho
-
-
-    subroutine corrector(this, mesh, ds, du)
-        class(body_t), intent(inout)  :: this    
-        type(mesh_t), intent(in)      :: mesh    
-        real(wp), intent(in)          :: ds
-        type(vector_t), intent(out)   :: du(:)
-
-        type(minres_ez_t)             :: minres_ez
-        type(minres_info_t)           :: minres_info
-        real(wp)                      :: kval
-        real(wp)                      :: kval1
-        real(wp)                      :: kval2
-        real(wp)                      :: aij
-        integer(ip)                   :: cnt
-        integer(ip)                   :: i,j,k
-
-        ! Create A matrix for finding velocity corrections, Ax=b
-        this % a % nnz = 0_ip
-        cnt = 0_ip
-        do i = 1, this % num_pos()
-            do j = 1, this % num_pos()
-                aij = 0.0_wp
-                do k = 1, this % nbrs(i) % num
-                    kval1 = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
-                    kval2 = kernel(this % nbrs(i) % pos(k), this % pos(j), ds)
-                    aij = aij + kval1*kval2
-                end do
-                if (aij > 0.0_wp) then
-                    cnt = cnt + 1_ip
-                    this % a % nnz = cnt
-                    this % a % ix(cnt) = i
-                    this % a % jy(cnt) = j
-                    this % a % val(cnt) = aij
-                end if
-            end do 
-        end do
-
-        ! Create b vector for finding velocity corrections
-        do i = 1, this % num_pos()
-            this % bx(i) = 0.0_wp
-            this % by(i) = 0.0_wp
-            do k = 1, this % nbrs(i) % num
-                kval = kernel(this % nbrs(i) % pos(k), this % pos(i), ds)
-                this % bx(i) = this % bx(i) - kval * this % nbrs(i) % u(k) % x 
-                this % by(i) = this % by(i) - kval * this % nbrs(i) % u(k) % y 
-            end do
-        end do
-
-        ! Solve linear system
-        minres_ez % checka = .true.
-        minres_ez % precon = .true.
-        !call minres_ez % print()
-
-        call minres_ez % solve(   & 
-            this % a % ix,        & 
-            this % a % jy,        &
-            this % a % val,       &
-            this % bx,            &
-            this % dux,           &
-            minres_info,          &
-            this % a % nnz        &
-            )
-        call minres_info % print()
-        if (minres_info % istop >= 2) then
-            print *, 'minres istop > 2 for dux velocity correction'
-            stop 
-        end if
-
-        call minres_ez % solve(   & 
-            this % a % ix,        & 
-            this % a % jy,        &
-            this % a % val,       &
-            this % by,            &
-            this % duy,           &
-            minres_info,          &
-            this % a % nnz        &
-            )
-        call minres_info % print()
-        if (minres_info % istop >= 2) then
-            print *, 'minres istop > 2 for  duy velocity correction'
-            stop 
-        end if
-
-        du % x = this % dux
-        du % y = this % duy
-
-    end subroutine corrector
 
 
     elemental function num_pos(this) result(num)

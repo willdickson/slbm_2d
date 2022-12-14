@@ -101,14 +101,14 @@ contains
                     end do
                     if (aij > 0.0_wp) then
                         cnt = cnt + 1_ip
-                        body % a % nnz = cnt
-                        body % a % ix(cnt) = i
-                        body % a % jy(cnt) = j
-                        body % a % val(cnt) = aij
+                        this % a % ix(cnt) = i
+                        this % a % jy(cnt) = j
+                        this % a % val(cnt) = aij
                     end if
                 end do
             end do
         end do
+        this % a % nnz = cnt
 
         ! Create b vector for finding velocity corrections
         cnt = 0_ip
@@ -126,11 +126,12 @@ contains
             end do
         end do
 
-        ! Solve linear system
+        ! Configure minres linear solver
         minres_ez % checka = .true.
         minres_ez % precon = .true.
         !call minres_ez % print()
 
+        ! Solve linear system A * vx = bx
         call minres_ez % solve(   & 
             this % a % ix,        & 
             this % a % jy,        &
@@ -146,6 +147,7 @@ contains
             stop 
         end if
 
+        ! Solve linear system A * vy = by
         call minres_ez % solve(   & 
             this % a % ix,        & 
             this % a % jy,        &
