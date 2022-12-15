@@ -285,7 +285,7 @@ contains
                 time                       &
                 )
 
-            ! Calculate and apply immersed boundry velocity correctino
+            ! Calculate and apply immersed boundry velocity correction
             call this % ibsol % corrector( &
                 this % config % ds,        &
                 this % curr % u            &

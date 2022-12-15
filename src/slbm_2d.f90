@@ -38,12 +38,12 @@ contains
 
 
     subroutine body_test
-        real(wp), parameter         :: s0 = 0.0_wp
-        real(wp), parameter         :: s1 = 0.5_wp
-        real(wp), parameter         :: x0 = 0.5_wp
-        real(wp), parameter         :: y0 = 0.5_wp
-        real(wp), parameter         :: amp_x = 0.2_wp
-        real(wp), parameter         :: amp_y = 0.2_wp
+        real(wp), parameter         :: s0 = -0.2_wp
+        real(wp), parameter         :: s1 =  0.2_wp
+        real(wp), parameter         :: x0 =  0.5_wp
+        real(wp), parameter         :: y0 =  0.5_wp
+        real(wp), parameter         :: amp_x = 0.15_wp
+        real(wp), parameter         :: amp_y = 0.15_wp
         integer(ip), parameter      :: num_pts = 50_ip 
         integer(ip), parameter      :: num_body = 1_ip
 
@@ -52,7 +52,6 @@ contains
         type(simulation_t)          :: sim
         type(body_t), allocatable   :: body(:)
         type(vector_t), allocatable :: pts(:)
-        type(vector_t), allocatable :: du(:)
         real(wp), allocatable       :: s(:)
         real(wp), allocatable       :: a(:,:)
         real(wp)                    :: aij
@@ -68,35 +67,16 @@ contains
         allocate(pts(size(s)))
         pts % x = x0 + amp_x*cos(2.0_wp*PI*s)
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
+
         allocate(body(num_body))
         body(1) = body_t(BODY_TYPE_OPEN, pts)
-        body(1) % vel = vector_t(0.1_wp, 0.0_wp)
+        !body(1) % vel = vector_t(0.0_wp, 0.0_wp)
         sim % ibsol  = ibsol_t(body)
 
-        allocate(du(size(pts)), source=VECTOR_ZERO) 
+        !call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
+        !call sim % ibsol % corrector(config % ds, sim % curr % u)
 
-        call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
-        call sim % ibsol % corrector(config % ds, sim % curr % u)
-
-        !print *, 'nnz = ', sim % ibsol % a % nnz
-        !print *, 'density = ', sim % ibsol % a % density()
-
-        !do k = 1, sim % ibsol % a % nnz
-        !    ix  = sim % ibsol % a % ix(k)
-        !    jy  = sim % ibsol % a % jy(k)
-        !    aij = sim % ibsol % a % val(k)
-        !    print *, ix, jy, aij 
-        !end do
-
-
-        !a = sim % ibsol % a % as_dense_mat()
-
-        !do i = 1, size(a,1) 
-        !    do j = 1, size(a,2)
-        !        print *, i, j, a(i,j), a(i,j) - a(j,i)
-        !    end do
-        !    print *, ''
-        !end do
+        call sim % run()
 
 
     end subroutine body_test
