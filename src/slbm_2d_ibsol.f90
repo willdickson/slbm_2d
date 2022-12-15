@@ -79,6 +79,7 @@ contains
         real(wp)                :: kerni        ! kernel value for ith pos
         real(wp)                :: kernj        ! kernel value for jth pos
         real(wp)                :: aij          ! A matrix value at i,j
+        real(wp)                :: ds2          ! ds**2
         integer(ip)             :: cnt          ! element counter 
         integer(ip)             :: n            ! loop index for bodies
         integer(ip)             :: i            ! loop index for body pos points
@@ -86,6 +87,8 @@ contains
         integer(ip)             :: k            ! loop index for body nbr points
         integer(ip)             :: ix           ! x coord. mesh index of nbr pt
         integer(ip)             :: jy           ! y coord. mesh index of nbr pt
+
+        ds2 = ds**2
 
 
         ! Create A matrix for finding velocity corrections, Ax=b
@@ -100,7 +103,7 @@ contains
                     do k = 1, body % nbrs(i) % num 
                         kerni = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
                         kernj = kernel(body % nbrs(i) % pos(k), body % pos(j), ds)
-                        aij = aij + kerni*kernj
+                        aij = aij + kerni*kernj*ds2
                     end do
                     if (aij > 0.0_wp) then
                         cnt = cnt + 1_ip
@@ -123,8 +126,8 @@ contains
                 this % by(cnt) = 0.0_wp
                 do k = 1, body % nbrs(i) % num
                     kerni = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
-                    this % bx(cnt) = this % bx(cnt) - kerni * body % nbrs(i) % u(k) % x 
-                    this % by(cnt) = this % by(cnt) - kerni * body % nbrs(i) % u(k) % y 
+                    this % bx(cnt) = this % bx(cnt) - kerni * ds2*body % nbrs(i) % u(k) % x 
+                    this % by(cnt) = this % by(cnt) - kerni * ds2*body % nbrs(i) % u(k) % y 
                 end do
             end do
         end do
@@ -178,7 +181,7 @@ contains
                     jy = body % nbrs(i) % jy(k)
                     u(ix, jy) % x = u(ix,jy) % x + (kerni * this % vx(cnt))
                     u(ix, jy) % y = u(ix,jy) % y + (kerni * this % vy(cnt))
-                    !print *, ix, jy,  u(ix, jy) % x, u(ix, jy) % y
+                    print *, ix, jy,  u(ix, jy) % x, u(ix, jy) % y
                 end do
             end do
         end do
