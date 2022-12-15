@@ -70,6 +70,7 @@ contains
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
         allocate(body(num_body))
         body(1) = body_t(BODY_TYPE_OPEN, pts)
+        body(1) % vel = vector_t(0.1_wp, 0.0_wp)
         sim % ibsol  = ibsol_t(body)
 
         allocate(du(size(pts)), source=VECTOR_ZERO) 

@@ -56,9 +56,9 @@ contains
         if ((dx >= 2.0_wp .or. dy >= 2.0_wp)) then
             val = 0.0_wp
         else
-            kx = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dx))
-            ky = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dy))
-            val = kx * ky
+            kx  = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dx))
+            ky  = 0.25_wp*(1.0_wp + cos(0.5_wp*PI*dy))
+            val = (kx * ky) / (ds**2)
         end if
     end function kernel
 

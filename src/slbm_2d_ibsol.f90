@@ -79,7 +79,7 @@ contains
         real(wp)                :: kerni        ! kernel value for ith pos
         real(wp)                :: kernj        ! kernel value for jth pos
         real(wp)                :: aij          ! A matrix value at i,j
-        real(wp)                :: ds2          ! ds**2
+        real(wp)                :: ds2          ! square of mesh spacing ds**2
         integer(ip)             :: cnt          ! element counter 
         integer(ip)             :: n            ! loop index for bodies
         integer(ip)             :: i            ! loop index for body pos points
@@ -88,8 +88,8 @@ contains
         integer(ip)             :: ix           ! x coord. mesh index of nbr pt
         integer(ip)             :: jy           ! y coord. mesh index of nbr pt
 
+        ! square of mesh spacing
         ds2 = ds**2
-
 
         ! Create A matrix for finding velocity corrections, Ax=b
         this % a % nnz = 0_ip
@@ -122,8 +122,8 @@ contains
             body => this % body(n)
             do i = 1, body % num_pos()
                 cnt = cnt + 1
-                this % bx(cnt) = 0.0_wp
-                this % by(cnt) = 0.0_wp
+                this % bx(cnt) = body % vel(i) % x
+                this % by(cnt) = body % vel(i) % y
                 do k = 1, body % nbrs(i) % num
                     kerni = kernel(body % nbrs(i) % pos(k), body % pos(i), ds)
                     this % bx(cnt) = this % bx(cnt) - kerni * ds2*body % nbrs(i) % u(k) % x 
