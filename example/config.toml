@@ -1,6 +1,6 @@
 [mesh]
-ds = 0.01            
-len_x = 1.0
+ds = 0.005            
+len_x = 4.0
 len_y = 1.0
 
 [save]
@@ -13,7 +13,7 @@ density = 1.0
 
 [init]
 type = 'constant'
-velocity.x = 0.0
+velocity.x = 0.1
 velocity.y = 0.0
 
 [bndry.left]
@@ -24,10 +24,10 @@ value = 0.1
 type = 'outflow'
 
 [bndry.top]
-type ='noslip'
+type ='slip'
 
 [bndry.bottom]
-type = 'noslip'
+type = 'slip'
 
 [stop]       
 cond  = "time"       
