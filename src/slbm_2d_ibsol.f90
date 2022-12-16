@@ -181,7 +181,6 @@ contains
                     jy = body % nbrs(i) % jy(k)
                     u(ix, jy) % x = u(ix,jy) % x + (kerni * this % vx(cnt))
                     u(ix, jy) % y = u(ix,jy) % y + (kerni * this % vy(cnt))
-                    !print *, ix, jy,  u(ix, jy) % x, u(ix, jy) % y
                 end do
             end do
         end do
