@@ -20,16 +20,16 @@ module slbm_2d_body
 
     type, public :: body_t
         integer(ip)                 :: type_id = BODY_TYPE_UNKNOWN
+        !type(motion_t)              :: motion    !
         type(vector_t), allocatable :: pos(:)    ! positions of body points 
         type(vector_t), allocatable :: vel(:)    ! velocities of body point
-        type(nbrs_t), allocatable   :: nbrs(:)   ! neighboring mesh pos
-        real(wp), allocatable       :: rho(:)    ! density at body points
+        type(nbrs_t),   allocatable :: nbrs(:)   ! neighboring mesh pos
+        real(wp),       allocatable :: rho(:)    ! density at body points
     contains
         private
         procedure, public  :: update
         procedure          :: update_pos_and_vel
         procedure          :: update_nbrs_and_rho
-        !procedure, public  :: corrector
         procedure, public  :: num_pos
         procedure          :: check_pos
     end type body_t
@@ -44,7 +44,7 @@ contains
 
 
     function body_constructor(type_id, pos) result(body)
-        integer(ip), intent(in)    :: type_id
+        integer(ip),    intent(in) :: type_id
         type(vector_t), intent(in) :: pos(:)
         type(body_t)               :: body
         integer(ip)                :: i
@@ -67,9 +67,9 @@ contains
     subroutine update(this, state, mesh, ds, time)
         class(body_t), intent(inout) :: this    ! the current body 
         type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
-        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
-        real(wp), intent(in)         :: ds      ! mesh spacing
-        real(wp), intent(in)         :: time    ! simulation time 
+        type(mesh_t),  intent(in)    :: mesh    ! x and y meshes
+        real(wp),      intent(in)    :: ds      ! mesh spacing
+        real(wp),      intent(in)    :: time    ! simulation time 
         call update_pos_and_vel(this, state, mesh, ds, time)
         call update_nbrs_and_rho(this, state, mesh, ds, time)
     end subroutine update
@@ -78,18 +78,18 @@ contains
     subroutine update_pos_and_vel(this, state, mesh, ds, time)
         class(body_t), intent(inout) :: this    ! the current body 
         type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
-        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
-        real(wp), intent(in)         :: ds      ! mesh spacing
-        real(wp), intent(in)         :: time    ! simulation time 
+        type(mesh_t),  intent(in)    :: mesh    ! x and y meshes
+        real(wp),      intent(in)    :: ds      ! mesh spacing
+        real(wp),      intent(in)    :: time    ! simulation time 
     end subroutine update_pos_and_vel
 
 
     subroutine update_nbrs_and_rho(this, state, mesh, ds, time)
         class(body_t), intent(inout) :: this    ! the current body 
         type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
-        type(mesh_t), intent(in)     :: mesh    ! x and y meshes
-        real(wp), intent(in)         :: ds      ! mesh spacing
-        real(wp), intent(in)         :: time    ! simulation time 
+        type(mesh_t),  intent(in)    :: mesh    ! x and y meshes
+        real(wp),      intent(in)    :: ds      ! mesh spacing
+        real(wp),      intent(in)    :: time    ! simulation time 
 
         real(wp)                     :: r       ! radial dist. from pos to mesh pt
         real(wp)                     :: big_r   ! a big radial dist. start value 
