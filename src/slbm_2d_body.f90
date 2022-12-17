@@ -13,18 +13,19 @@ module slbm_2d_body
     use slbm_2d_line_seg, only : line_seg_t
     use slbm_2d_line_seg, only : intersect
     use slbm_2d_line_seg, only : is_chain
+    use slbm_2d_motion,   only : motion_t
 
     implicit none
     private
 
 
     type, public :: body_t
-        integer(ip)                 :: type_id = BODY_TYPE_UNKNOWN
-        !type(motion_t)              :: motion    !
-        type(vector_t), allocatable :: pos(:)    ! positions of body points 
-        type(vector_t), allocatable :: vel(:)    ! velocities of body point
-        type(nbrs_t),   allocatable :: nbrs(:)   ! neighboring mesh pos
-        real(wp),       allocatable :: rho(:)    ! density at body points
+        integer(ip)                  :: type_id = BODY_TYPE_UNKNOWN
+        class(motion_t), allocatable :: motion    !
+        type(vector_t), allocatable  :: pos(:)    ! positions of body points 
+        type(vector_t), allocatable  :: vel(:)    ! velocities of body point
+        type(nbrs_t),   allocatable  :: nbrs(:)   ! neighboring mesh pos
+        real(wp),       allocatable  :: rho(:)    ! density at body points
     contains
         private
         procedure, public  :: update

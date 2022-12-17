@@ -38,9 +38,9 @@ contains
 
 
     subroutine body_test
-        real(wp), parameter         :: s0 = -0.2_wp
-        real(wp), parameter         :: s1 =  0.2_wp
-        real(wp), parameter         :: x0 =  0.5_wp
+        real(wp), parameter         :: s0 =  0.0_wp
+        real(wp), parameter         :: s1 =  1.0_wp
+        real(wp), parameter         :: x0 =  1.0_wp
         real(wp), parameter         :: y0 =  0.5_wp
         real(wp), parameter         :: amp_x = 0.15_wp
         real(wp), parameter         :: amp_y = 0.15_wp
@@ -63,7 +63,7 @@ contains
         call config % pprint()
         sim = simulation_t(config)
 
-        s = [((s0 + (s1 - s0)*k/(num_pts - 1.0_wp)), k = 0, num_pts-1)]
+        s = [((s0 + (s1 - s0)*k/(num_pts - 1.0_wp)), k = 0, num_pts-2)]
         allocate(pts(size(s)))
         pts % x = x0 + amp_x*cos(2.0_wp*PI*s)
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
