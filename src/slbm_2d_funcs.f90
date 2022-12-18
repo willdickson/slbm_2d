@@ -14,11 +14,17 @@ module slbm_2d_funcs
 
     public :: kernel
     public :: equilib_func
+    public :: constrain 
 
     ! Constants used in equilibrium function calculation
     real(wp), parameter  :: A1 = 1.0_wp/CS2
     real(wp), parameter  :: A2 = 1.0_wp/(2.0_wp*CS4)
     real(wp), parameter  :: A3 = 1.0_wp/(2.0_wp*CS2)
+
+    interface constrain
+        procedure :: constrain_real
+        procedure :: constrain_integer
+    end interface constrain
 
 contains
 
@@ -61,6 +67,24 @@ contains
             val = (kx * ky) / (ds**2)
         end if
     end function kernel
+
+    
+    function constrain_real(x, xmin, xmax) result(val)
+        real(wp), intent(in) :: x
+        real(wp), intent(in) :: xmin
+        real(wp), intent(in) :: xmax
+        real(wp)             :: val
+        val = min(max(x, xmin), xmax)
+    end function constrain_real
+
+
+    function constrain_integer(k, kmax, kmin) result(val)
+        integer(ip), intent(in) :: k
+        integer(ip), intent(in) :: kmin
+        integer(ip), intent(in) :: kmax
+        integer(ip)             :: val
+        val = min(max(k, kmin), kmax)
+    end function constrain_integer
 
 
 end module slbm_2d_funcs

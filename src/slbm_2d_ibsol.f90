@@ -1,12 +1,14 @@
 module slbm_2d_ibsol
 
     use slbm_2d_kinds,  only : wp, ip
+    use slbm_2d_const,  only : BODY_TYPE_OPEN
     use slbm_2d_vector, only : vector_t
     use slbm_2d_body,   only : body_t
     use slbm_2d_mesh,   only : mesh_t
     use slbm_2d_spmat,  only : spmat_t
     use slbm_2d_state,  only : state_t
     use slbm_2d_funcs,  only : kernel
+    use slbm_2d_funcs,  only : constrain
     use minres,         only : minres_ez_t
     use minres,         only : minres_info_t
 
@@ -63,7 +65,7 @@ contains
 
     subroutine ibsol_update(this, state, mesh, ds, time)
         class(ibsol_t), intent(inout) :: this    ! immersed boundry solver
-        type(state_t), intent(in)     :: state   ! fluid state: ux, uy, rho
+        type(state_t), intent(inout)  :: state   ! fluid state: ux, uy, rho
         type(mesh_t), intent(in)      :: mesh    ! x and y meshes
         real(wp), intent(in)          :: ds      ! mesh spacing
         real(wp), intent(in)          :: time    ! simulation time 
@@ -71,13 +73,51 @@ contains
         do i = 1, this % num_body()
             call this % body(i) % update(state, mesh, ds, time)
         end do
+        call this % update_id(state, mesh, ds)
     end subroutine ibsol_update
 
 
-    subroutine ibsol_update_id(this, mesh, ds)
-        class(ibsol_t), intent(inout) :: this    ! immersed boundry solver
-        type(mesh_t), intent(in)      :: mesh    ! x and y meshes
-        real(wp), intent(in)          :: ds      ! mesh spacing
+    subroutine ibsol_update_id(this, state, mesh, ds)
+        class(ibsol_t), intent(inout), target :: this    ! immersed boundry solver
+        type(state_t),  intent(inout)         :: state   ! fluid state: ux, uy, rho
+        type(mesh_t),   intent(in)            :: mesh    ! x and y meshes
+        real(wp),       intent(in)            :: ds      ! mesh spacing
+
+        type(body_t), pointer  :: body ! alias for current body
+        real(wp)               :: x    ! mesh point x coord
+        real(wp)               :: y    ! mesh point y coord
+        integer(ip)            :: imin ! minimum i search index 
+        integer(ip)            :: imax ! maximum i search index
+        integer(ip)            :: jmin ! minimum j search index
+        integer(ip)            :: jmax ! maximum j search index
+        integer(ip)            :: n    ! index for looping over bodies
+        integer(ip)            :: i    ! index for looping over x grid cells
+        integer(ip)            :: j    ! index for looping over y grid cells
+        integer(ip)            :: k    ! index for looping over body pos pts
+
+        ! Reset all ids
+        this % id = 0
+        ! Loop over all immersed bodies
+        do n = 1, this % num_body()
+            body => this % body(i)
+            ! Skip open bodies - no interior
+            if (body % type_id == BODY_TYPE_OPEN) then
+                cycle
+            end if
+            ! Get range of i,j indices for to search
+            call bounding_ind(body, mesh, ds, imin, imax, jmin, jmax)
+            do i = imin, imax
+                do j = jmin, jmax
+                    ! mesh point x and y coordinates
+                    x = mesh % x(i,j)
+                    y = mesh % y(i,j)
+                    ! check if point is inside body
+
+                    !body % is_inside(x,y)
+                end do
+            end do
+        end do
+
     end subroutine ibsol_update_id
 
 
@@ -211,6 +251,34 @@ contains
             num = size(this % body)
         end if
     end function ibsol_num_body
+
+
+    subroutine bounding_ind(body, mesh, ds, imin, imax, jmin, jmax)
+        type(body_t), intent(in)  :: body
+        type(mesh_t), intent(in)  :: mesh
+        real(wp),     intent(in)  :: ds
+        integer(ip),  intent(out) :: imin
+        integer(ip),  intent(out) :: imax
+        integer(ip),  intent(out) :: jmin
+        integer(ip),  intent(out) :: jmax
+        real(wp)                  :: xmin
+        real(wp)                  :: xmax
+        real(wp)                  :: ymin
+        real(wp)                  :: ymax
+        integer(ip)               :: num_x
+        integer(ip)               :: num_y
+        num_x = mesh % num_x()
+        num_y = mesh % num_y()
+        call body % bounding_box(xmin, xmax, ymin, ymax)
+        imin = floor(xmin/ds) + 1
+        jmin = floor(ymin/ds) + 1
+        imax = ceiling(xmax/ds) + 1
+        jmax = ceiling(ymax/ds) + 1
+        imin = constrain(imin, 0, num_x)
+        imax = constrain(imax, 0, num_x)
+        jmin = constrain(jmin, 0, num_y)
+        jmax = constrain(jmax, 0, num_y)
+    end subroutine bounding_ind
 
 
 end module slbm_2d_ibsol
