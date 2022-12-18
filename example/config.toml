@@ -1,14 +1,14 @@
 [mesh]
-ds = 0.005            
-len_x = 4.0
-len_y = 1.0
+ds = 0.010            
+len_x = 6.0
+len_y = 2.0
 
 [save]
 nstep = 100 
 directory = 'data'
 
 [fluid]
-kvisc   = 2.0e-4     
+kvisc   = 2.0e-5     
 density = 1.0        
 
 [init]

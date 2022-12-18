@@ -15,6 +15,7 @@ module slbm_2d
     use slbm_2d_line_seg,   only : orientation 
     use slbm_2d_line_seg,   only : is_chain 
     use slbm_2d_vector,     only : vector_t
+    use stdlib_io_npy,      only : save_npy
 
     implicit none
     private
@@ -41,10 +42,10 @@ contains
     subroutine body_test
         real(wp), parameter         :: s0 =  0.0_wp
         real(wp), parameter         :: s1 =  1.0_wp
-        real(wp), parameter         :: x0 =  1.0_wp
-        real(wp), parameter         :: y0 =  0.5_wp
-        real(wp), parameter         :: amp_x = 0.15_wp
-        real(wp), parameter         :: amp_y = 0.15_wp
+        real(wp), parameter         :: x0 =  2.0_wp
+        real(wp), parameter         :: y0 =  1.0_wp
+        real(wp), parameter         :: amp_x = 0.1_wp
+        real(wp), parameter         :: amp_y = 0.1_wp
         integer(ip), parameter      :: num_pts = 50_ip 
         integer(ip), parameter      :: num_body = 1_ip
 
@@ -73,17 +74,10 @@ contains
         body(1) = body_t(BODY_TYPE_CLOSED, pts)
         !body(1) % vel = vector_t(0.0_wp, 0.0_wp)
         sim % ibsol  = ibsol_t(body, config % num_x, config % num_y)
+        call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
 
-        block
-            real(wp) :: xmin, xmax, ymin, ymax
-            call body(1) % bounding_box(xmin, xmax, ymin, ymax)
-            print *, xmin, xmax, ymin, ymax
-            call sim % mesh % bounding_box(xmin, xmax, ymin, ymax)
-            print *, xmin, xmax, ymin, ymax
-        end block
-
-        !call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
         !call sim % ibsol % corrector(config % ds, sim % curr % u)
+        !call save_npy('id.npy', sim % ibsol % id)
 
         call sim % run()
 

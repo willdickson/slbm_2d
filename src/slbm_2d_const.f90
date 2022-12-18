@@ -7,6 +7,7 @@ module slbm_2d_const
 
     public :: PI                   ! mathematical constant (3.145...)
 
+
     ! Vector constants
     public :: VECTOR_ZERO          ! the zero vector 
     public :: VECTOR_ONES          ! the ones vector
@@ -45,6 +46,9 @@ module slbm_2d_const
     public :: INIT_COND_CONST      ! Constant velocity initial condition
     public :: INIT_COND_FILE       ! Initial condition from file
     public :: INIT_COND_UNKNOWN    ! Unknown initial condition
+
+    ! MESH ID
+    public :: MESH_ID_FLUID        ! Idenifies mesh cell as fluid
 
     ! Latice constants
     public :: CS                   ! lbm speed of sound 
@@ -106,6 +110,9 @@ module slbm_2d_const
     integer(ip), parameter :: INIT_COND_CONST    = 1
     integer(ip), parameter :: INIT_COND_FILE     = 2
     integer(ip), parameter :: INIT_COND_UNKNOWN  = 3
+
+    ! Mesh id for fluid elements
+    integer(ip), parameter :: MESH_ID_FLUID = 0
 
     ! Latice constants
     real(wp),    parameter :: CS  = 1.0_wp/sqrt(3.0_wp)

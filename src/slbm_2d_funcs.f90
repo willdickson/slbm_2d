@@ -78,7 +78,7 @@ contains
     end function constrain_real
 
 
-    function constrain_integer(k, kmax, kmin) result(val)
+    function constrain_integer(k, kmin, kmax) result(val)
         integer(ip), intent(in) :: k
         integer(ip), intent(in) :: kmin
         integer(ip), intent(in) :: kmax

@@ -6,6 +6,7 @@ module slbm_2d_body
     use slbm_2d_const,    only : BODY_TYPE_OPEN
     use slbm_2d_const,    only : BODY_TYPE_CLOSED
     use slbm_2d_const,    only : BODY_TYPE_UNKNOWN
+    use slbm_2d_const,    only : MESH_ID_FLUID
     use slbm_2d_vector,   only : vector_t
     use slbm_2d_nbrs,     only : nbrs_t
     use slbm_2d_state,    only : state_t
@@ -28,9 +29,9 @@ module slbm_2d_body
         real(wp),       allocatable  :: rho(:)    ! density at body points
     contains
         private
-        procedure, public  :: update
-        procedure          :: update_pos_and_vel
-        procedure          :: update_nbrs_and_rho
+        !procedure, public  :: update
+        procedure, public  :: update_pos_and_vel
+        procedure, public  :: update_nbrs_and_rho
         procedure, public  :: num_pos
         procedure, public  :: check_pos
         procedure, public  :: check_pos_open
@@ -70,15 +71,15 @@ contains
     end function body_constructor
 
     
-    subroutine update(this, state, mesh, ds, time)
-        class(body_t), intent(inout) :: this    ! the current body 
-        type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
-        type(mesh_t),  intent(in)    :: mesh    ! x and y meshes
-        real(wp),      intent(in)    :: ds      ! mesh spacing
-        real(wp),      intent(in)    :: time    ! simulation time 
-        call update_pos_and_vel(this, state, mesh, ds, time)
-        call update_nbrs_and_rho(this, state, mesh, ds, time)
-    end subroutine update
+    !subroutine update(this, state, mesh, ds, time)
+    !    class(body_t), intent(inout) :: this    ! the current body 
+    !    type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
+    !    type(mesh_t),  intent(in)    :: mesh    ! x and y meshes
+    !    real(wp),      intent(in)    :: ds      ! mesh spacing
+    !    real(wp),      intent(in)    :: time    ! simulation time 
+    !    call update_pos_and_vel(this, state, mesh, ds, time)
+    !    call update_nbrs_and_rho(this, state, mesh, ds, time)
+    !end subroutine update
 
 
     subroutine update_pos_and_vel(this, state, mesh, ds, time)
@@ -90,10 +91,11 @@ contains
     end subroutine update_pos_and_vel
 
 
-    subroutine update_nbrs_and_rho(this, state, mesh, ds, time)
+    subroutine update_nbrs_and_rho(this, state, mesh, id, ds, time)
         class(body_t), intent(inout) :: this    ! the current body 
         type(state_t), intent(in)    :: state   ! fluid state: ux, uy, rho
         type(mesh_t),  intent(in)    :: mesh    ! x and y meshes
+        integer(ip),   intent(in)    :: id(:,:) ! mesh point ids (fluid=0, bodies=1,2,...)
         real(wp),      intent(in)    :: ds      ! mesh spacing
         real(wp),      intent(in)    :: time    ! simulation time 
 
@@ -135,25 +137,27 @@ contains
             min_r = big_r
             do i = i_min, i_max
                 do j = j_min, j_max
-                    ! Position of mesh point
-                    xm = mesh % x(i,j)
-                    ym = mesh % y(i,j)
+                    if (id(i,j) == MESH_ID_FLUID) then
+                        ! Position of mesh point
+                        xm = mesh % x(i,j)
+                        ym = mesh % y(i,j)
 
-                    ! Add neighbors to array
-                    nnbrs = this % nbrs(k) % num + 1
-                    this % nbrs(k) % num  = nnbrs
-                    this % nbrs(k) % ix(nnbrs) = i
-                    this % nbrs(k) % jy(nnbrs) = j
-                    this % nbrs(k) % pos(nnbrs) = vector_t(xm, ym)
-                    this % nbrs(k) % u(nnbrs) = state % u(i,j) 
+                        ! Add neighbors to array
+                        nnbrs = this % nbrs(k) % num + 1
+                        this % nbrs(k) % num  = nnbrs
+                        this % nbrs(k) % ix(nnbrs) = i
+                        this % nbrs(k) % jy(nnbrs) = j
+                        this % nbrs(k) % pos(nnbrs) = vector_t(xm, ym)
+                        this % nbrs(k) % u(nnbrs) = state % u(i,j) 
 
-                    ! Find closest cell to body point
-                    xb = this % pos(k) % x
-                    yb = this % pos(k) % y
-                    r = sqrt((xm-xb)**2 + (ym-yb)**2)
-                    if (r < min_r) then
-                        min_r = r
-                        this % rho(k) = state % rho(i,j) 
+                        ! Find closest cell to body point
+                        xb = this % pos(k) % x
+                        yb = this % pos(k) % y
+                        r = sqrt((xm-xb)**2 + (ym-yb)**2)
+                        if (r < min_r) then
+                            min_r = r
+                            this % rho(k) = state % rho(i,j) 
+                        end if
                     end if
                 end do
             end do 
@@ -306,7 +310,7 @@ contains
         ! Count the number of intersections 
         cnt = 0
         do i = 1, num_pos 
-            j = modulo(i+1, num_pos)
+            j = modulo(i, num_pos) + 1
             seg_bdy = line_seg_t(this % pos(i), this % pos(j)) 
             if (intersect(seg_bdy, seg_ext)) then
                 cnt = cnt + 1
@@ -315,9 +319,9 @@ contains
 
         ! Check of even or odd number of intersections
         if (modulo(cnt,2) == 0) then
-            res = .true.
-        else
             res = .false.
+        else
+            res = .true.
         end if
     end function is_interior
 
@@ -330,7 +334,7 @@ contains
         real(wp)                   :: ymin
         real(wp)                   :: ymax
         call this % bounding_box(xmin, xmax, ymin, ymax)
-        pext = vector_t(xmin - 1.0_wp, ymin - 1.0_wp)
+        pext = vector_t(2.0_wp*xmax, 2.0_wp*ymax)
     end function exterior_pos
 
 

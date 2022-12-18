@@ -1,6 +1,7 @@
 module slbm_2d_ibsol
 
     use slbm_2d_kinds,  only : wp, ip
+    use slbm_2d_const,  only : VECTOR_ZERO
     use slbm_2d_const,  only : BODY_TYPE_OPEN
     use slbm_2d_vector, only : vector_t
     use slbm_2d_body,   only : body_t
@@ -71,9 +72,12 @@ contains
         real(wp), intent(in)          :: time    ! simulation time 
         integer(ip)                   :: i
         do i = 1, this % num_body()
-            call this % body(i) % update(state, mesh, ds, time)
+            call this % body(i) % update_pos_and_vel(state, mesh, ds, time)
         end do
         call this % update_id(state, mesh, ds)
+        do i = 1, this % num_body()
+            call this % body(i) % update_nbrs_and_rho(state, mesh, this % id,  ds, time)
+        end do
     end subroutine ibsol_update
 
 
@@ -97,7 +101,7 @@ contains
         this % id = 0
         ! Loop over all immersed bodies
         do n = 1, this % num_body()
-            body => this % body(i)
+            body => this % body(n)
             ! Skip open bodies - no interior
             if (body % type_id == BODY_TYPE_OPEN) then
                 cycle
@@ -110,6 +114,7 @@ contains
                     p = vector_t(mesh % x(i,j), mesh % y(i,j))
                     if (body % is_interior(p) ) then
                         this % id(i,j) = n
+                        state % u(i,j) = VECTOR_ZERO
                     end if
                 end do
             end do
@@ -270,10 +275,10 @@ contains
         jmin = floor(ymin/ds) + 1
         imax = ceiling(xmax/ds) + 1
         jmax = ceiling(ymax/ds) + 1
-        imin = constrain(imin, 0, num_x)
-        imax = constrain(imax, 0, num_x)
-        jmin = constrain(jmin, 0, num_y)
-        jmax = constrain(jmax, 0, num_y)
+        imin = constrain(imin, 1, num_x)
+        imax = constrain(imax, 1, num_x)
+        jmin = constrain(jmin, 1, num_y)
+        jmax = constrain(jmax, 1, num_y)
     end subroutine bounding_ind
 
 
