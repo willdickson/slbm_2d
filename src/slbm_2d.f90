@@ -74,6 +74,14 @@ contains
         !body(1) % vel = vector_t(0.0_wp, 0.0_wp)
         sim % ibsol  = ibsol_t(body)
 
+        block
+            real(wp) :: xmin, xmax, ymin, ymax
+            call body(1) % bounding_box(xmin, xmax, ymin, ymax)
+            print *, xmin, xmax, ymin, ymax
+            call sim % mesh % bounding_box(xmin, xmax, ymin, ymax)
+            print *, xmin, xmax, ymin, ymax
+        end block
+
         !call sim % ibsol % update(sim % curr, sim % mesh, config % ds, 0.0_wp)
         !call sim % ibsol % corrector(config % ds, sim % curr % u)
 

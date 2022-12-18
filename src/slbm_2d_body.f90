@@ -32,9 +32,10 @@ module slbm_2d_body
         procedure          :: update_pos_and_vel
         procedure          :: update_nbrs_and_rho
         procedure, public  :: num_pos
-        procedure          :: check_pos
-        procedure          :: check_pos_open
-        procedure          :: check_pos_closed
+        procedure, public  :: check_pos
+        procedure, public  :: check_pos_open
+        procedure, public  :: check_pos_closed
+        procedure, public  :: bounding_box
     end type body_t
 
 
@@ -187,13 +188,16 @@ contains
         class(body_t), intent(in) :: this
         type(line_seg_t)          :: seg1
         type(line_seg_t)          :: seg2
+        
+        integer(ip)               :: num_pos
         integer(ip)               :: i
         integer(ip)               :: j
         logical                   :: ok
         ! Check positions to make sure that body is simple open curve.
+        num_pos = this % num_pos()
         ok = .true.
-        do i = 1, size(this % pos)-2
-            do j = i+1, size(this % pos)-1
+        do i = 1, num_pos-2 
+            do j = i+1, num_pos-1
                 seg1 = line_seg_t(this % pos(i), this % pos(i+1))
                 seg2 = line_seg_t(this % pos(j), this % pos(j+1))
                 if (intersect(seg1, seg2)) then
@@ -242,6 +246,40 @@ contains
             end if
         end do
     end function check_pos_closed
+
+
+    subroutine bounding_box(this, xmin, xmax, ymin, ymax)
+        class(body_t), intent(in) :: this
+        real(wp), intent(out)   :: xmin
+        real(wp), intent(out)   :: xmax
+        real(wp), intent(out)   :: ymin
+        real(wp), intent(out)   :: ymax
+        integer(ip)             :: i
+        real(wp)                :: x
+        real(wp)                :: y
+
+        xmin = this % pos(1) % x
+        xmax = this % pos(1) % x
+        ymin = this % pos(1) % y
+        ymax = this % pos(1) % y
+
+        do i = 2, this % num_pos()
+            x = this % pos(i) % x
+            y = this % pos(i) % y
+            if (x < xmin) then 
+                xmin = x
+            end if
+            if (x > xmax) then
+                xmax = x
+            end if
+            if (y < ymin) then
+                ymin = y
+            end if
+            if (y > ymax) then
+                ymax = y
+            end if
+        end do
+    end subroutine bounding_box
 
 
 end module slbm_2d_body
