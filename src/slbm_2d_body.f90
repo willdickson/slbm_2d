@@ -37,6 +37,7 @@ module slbm_2d_body
         procedure, public  :: check_pos_closed
         procedure, public  :: bounding_box
         procedure, public  :: is_interior
+        procedure          :: exterior_pos
     end type body_t
 
 
@@ -283,18 +284,54 @@ contains
     end subroutine bounding_box
 
 
-    function is_interior(this, p) result(val)
+    function is_interior(this, p) result(res)
         class(body_t),  intent(in) :: this
         type(vector_t), intent(in) :: p
-        logical                    :: val
+        logical                    :: res 
 
-        val = .false.
+        type(vector_t)             :: p_ext
+        type(line_seg_t)           :: seg_ext
+        type(line_seg_t)           :: seg_bdy
+        integer(ip)                :: num_pos
+        integer(ip)                :: cnt
+        integer(ip)                :: i
+        integer(ip)                :: j
 
-        ! ----------------------------------
-        ! TODO 
-        ! -----------------------------------
+        num_pos = this % num_pos()
 
+        ! Get line segment from p to an exterior point (outside body)
+        p_ext = this % exterior_pos()
+        seg_ext = line_seg_t(p, p_ext)
+
+        ! Count the number of intersections 
+        cnt = 0
+        do i = 1, num_pos 
+            j = modulo(i+1, num_pos)
+            seg_bdy = line_seg_t(this % pos(i), this % pos(j)) 
+            if (intersect(seg_bdy, seg_ext)) then
+                cnt = cnt + 1
+            end if
+        end do
+
+        ! Check of even or odd number of intersections
+        if (modulo(cnt,2) == 0) then
+            res = .true.
+        else
+            res = .false.
+        end if
     end function is_interior
+
+
+    function exterior_pos(this) result(pext)
+        class(body_t),  intent(in) :: this
+        type(vector_t)             :: pext
+        real(wp)                   :: xmin
+        real(wp)                   :: xmax
+        real(wp)                   :: ymin
+        real(wp)                   :: ymax
+        call this % bounding_box(xmin, xmax, ymin, ymax)
+        pext = vector_t(xmin - 1.0_wp, ymin - 1.0_wp)
+    end function exterior_pos
 
 
 end module slbm_2d_body
