@@ -84,8 +84,7 @@ contains
         real(wp),       intent(in)            :: ds      ! mesh spacing
 
         type(body_t), pointer  :: body ! alias for current body
-        real(wp)               :: x    ! mesh point x coord
-        real(wp)               :: y    ! mesh point y coord
+        type(vector_t)         :: p
         integer(ip)            :: imin ! minimum i search index 
         integer(ip)            :: imax ! maximum i search index
         integer(ip)            :: jmin ! minimum j search index
@@ -93,7 +92,6 @@ contains
         integer(ip)            :: n    ! index for looping over bodies
         integer(ip)            :: i    ! index for looping over x grid cells
         integer(ip)            :: j    ! index for looping over y grid cells
-        integer(ip)            :: k    ! index for looping over body pos pts
 
         ! Reset all ids
         this % id = 0
@@ -108,16 +106,14 @@ contains
             call bounding_ind(body, mesh, ds, imin, imax, jmin, jmax)
             do i = imin, imax
                 do j = jmin, jmax
-                    ! mesh point x and y coordinates
-                    x = mesh % x(i,j)
-                    y = mesh % y(i,j)
                     ! check if point is inside body
-
-                    !body % is_inside(x,y)
+                    p = vector_t(mesh % x(i,j), mesh % y(i,j))
+                    if (body % is_interior(p) ) then
+                        this % id(i,j) = n
+                    end if
                 end do
             end do
         end do
-
     end subroutine ibsol_update_id
 
 

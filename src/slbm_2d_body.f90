@@ -36,6 +36,7 @@ module slbm_2d_body
         procedure, public  :: check_pos_open
         procedure, public  :: check_pos_closed
         procedure, public  :: bounding_box
+        procedure, public  :: is_interior
     end type body_t
 
 
@@ -280,6 +281,20 @@ contains
             end if
         end do
     end subroutine bounding_box
+
+
+    function is_interior(this, p) result(val)
+        class(body_t),  intent(in) :: this
+        type(vector_t), intent(in) :: p
+        logical                    :: val
+
+        val = .false.
+
+        ! ----------------------------------
+        ! TODO 
+        ! -----------------------------------
+
+    end function is_interior
 
 
 end module slbm_2d_body
