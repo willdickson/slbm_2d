@@ -33,6 +33,8 @@ module slbm_2d_body
         procedure          :: update_nbrs_and_rho
         procedure, public  :: num_pos
         procedure          :: check_pos
+        procedure          :: check_pos_open
+        procedure          :: check_pos_closed
     end type body_t
 
 
@@ -167,15 +169,28 @@ contains
     end function num_pos
 
 
-    elemental function check_pos(this) result(ok)
+    function check_pos(this) result(ok)
+        class(body_t), intent(in) :: this
+        logical                   :: ok
+        select case (this % type_id)
+        case (BODY_TYPE_OPEN)
+            ok = this % check_pos_open()
+        case (BODY_TYPE_CLOSED)
+            ok = this % check_pos_closed()
+        case default 
+            ok = .false.
+        end select
+    end function check_pos
+
+
+    function check_pos_open(this) result(ok)
         class(body_t), intent(in) :: this
         type(line_seg_t)          :: seg1
         type(line_seg_t)          :: seg2
         integer(ip)               :: i
         integer(ip)               :: j
         logical                   :: ok
-
-        ! Check positions to make sure that body is simple curve.
+        ! Check positions to make sure that body is simple open curve.
         ok = .true.
         do i = 1, size(this % pos)-2
             do j = i+1, size(this % pos)-1
@@ -192,7 +207,41 @@ contains
                 end if
             end do
         end do
-    end function check_pos
+    end function check_pos_open
+
+
+    function check_pos_closed(this) result(ok)
+        class(body_t), intent(in) :: this
+        type(line_seg_t)          :: seg
+        type(line_seg_t)          :: seg_last
+        integer(ip)               :: num_pos
+        integer(ip)               :: i
+        logical                   :: ok
+
+        ! Check that first size(pos) line segments for simple open curve. 
+        ok = this % check_pos_open()
+
+        ! Make sure that added last segment connecting pos(num_pos) to pos(1) 
+        ! creates a simple closed curve from first num_pos-1 segments.  
+        num_pos = this % num_pos()
+        seg_last = line_seg_t(this % pos(num_pos), this % pos(1))
+        do i = 1, num_pos-1
+            seg = line_seg_t(this % pos(i), this % pos(i+1))
+            if (intersect(seg_last, seg)) then 
+                if (i == 1) then
+                    if (.not. is_chain(seg_last, seg)) then
+                        ok = .false.
+                    end if
+                else if (i == (num_pos-1)) then
+                    if (.not. is_chain(seg, seg_last)) then 
+                        ok = .false.
+                    end if
+                else 
+                    ok = .false.
+                end if
+            end if
+        end do
+    end function check_pos_closed
 
 
 end module slbm_2d_body

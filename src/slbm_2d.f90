@@ -8,6 +8,7 @@ module slbm_2d
     use slbm_2d_body,       only : body_t
     use slbm_2d_const,      only : VECTOR_ZERO
     use slbm_2d_const,      only : BODY_TYPE_OPEN
+    use slbm_2d_const,      only : BODY_TYPE_CLOSED
     use slbm_2d_const,      only : PI
     use slbm_2d_line_seg,   only : line_seg_t
     use slbm_2d_line_seg,   only : intersect 
@@ -69,7 +70,7 @@ contains
         pts % y = y0 + amp_y*sin(2.0_wp*PI*s)
 
         allocate(body(num_body))
-        body(1) = body_t(BODY_TYPE_OPEN, pts)
+        body(1) = body_t(BODY_TYPE_CLOSED, pts)
         !body(1) % vel = vector_t(0.0_wp, 0.0_wp)
         sim % ibsol  = ibsol_t(body)
 

@@ -15,6 +15,7 @@ module slbm_2d_line_seg
         procedure, public :: on_segment
         procedure, public :: equal
         procedure, public :: not_equal
+        procedure, public :: print => line_seg_print 
         generic, public   :: operator(==) => equal 
         generic, public   :: operator(/=) => not_equal
     end type line_seg_t
@@ -92,6 +93,13 @@ contains
         logical                       :: res
         res = .not. (this == other)
     end function not_equal
+
+
+    subroutine line_seg_print(this)
+        class(line_seg_t), intent(in) :: this
+        print *, '(', this % p % x, ',', this % p % y, ') -> (', &
+            this % q % x, ',', this % q % y, ')' 
+    end subroutine line_seg_print
 
 
     elemental function intersect(seg1, seg2) result(res)
