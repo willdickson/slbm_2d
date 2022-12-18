@@ -14,16 +14,20 @@ module slbm_2d_ibsol
     private
 
     type, public :: ibsol_t
-        type(body_t), allocatable :: body(:)   ! Array of immersed bodies
-        type(spmat_t)             :: a         ! A matrix for velocity correction 
-        real(wp), allocatable     :: bx(:)     ! b vector for velocity corr. x comp.
-        real(wp), allocatable     :: by(:)     ! b vector for velocity corr. y comp. 
-        real(wp), allocatable     :: vx(:)     ! velocity correction x component 
-        real(wp), allocatable     :: vy(:)     ! velocity correction y component
-        integer(ip)               :: num_pos   ! total number of pos pts (all bodies)
+        type(body_t), allocatable :: body(:)     ! Array of immersed bodies
+        integer(ip)               :: num_pos     ! total number of pos pts (all bodies)
+        type(spmat_t)             :: a           ! A matrix for velocity correction 
+        real(wp), allocatable     :: bx(:)       ! b vector for velocity corr. x comp.
+        real(wp), allocatable     :: by(:)       ! b vector for velocity corr. y comp. 
+        real(wp), allocatable     :: vx(:)       ! velocity correction x component 
+        real(wp), allocatable     :: vy(:)       ! velocity correction y component
+        integer(ip), allocatable  :: id(:,:)     ! marker ids markers for mesh points 
+                                                 !   id = 0         for fluid
+                                                 !   id = 1, 2, ... for body interiors
     contains
         private
         procedure, public :: update    => ibsol_update
+        procedure, public :: update_id => ibsol_update_id
         procedure, public :: corrector => ibsol_corrector
         procedure, public :: num_body  => ibsol_num_body
     end type ibsol_t
@@ -34,8 +38,10 @@ module slbm_2d_ibsol
 
 contains
 
-    function ibsol_constructor(body) result(ibsol)
+    function ibsol_constructor(body, num_x, num_y) result(ibsol)
         type(body_t), intent(in) :: body(:)
+        integer(ip), intent(in)  :: num_x
+        integer(ip), intent(in)  :: num_y
         type(ibsol_t)            :: ibsol
         integer(ip)              :: num_pos
         integer(ip)              :: i
@@ -51,6 +57,7 @@ contains
         allocate(ibsol % by(num_pos), source=0.0_wp)
         allocate(ibsol % vx(num_pos), source=0.0_wp)
         allocate(ibsol % vy(num_pos), source=0.0_wp)
+        allocate(ibsol % id(num_x, num_y), source=0_ip)
     end function ibsol_constructor
 
 
@@ -65,6 +72,13 @@ contains
             call this % body(i) % update(state, mesh, ds, time)
         end do
     end subroutine ibsol_update
+
+
+    subroutine ibsol_update_id(this, mesh, ds)
+        class(ibsol_t), intent(inout) :: this    ! immersed boundry solver
+        type(mesh_t), intent(in)      :: mesh    ! x and y meshes
+        real(wp), intent(in)          :: ds      ! mesh spacing
+    end subroutine ibsol_update_id
 
 
     subroutine ibsol_corrector(this, ds, u)

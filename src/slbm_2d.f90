@@ -72,7 +72,7 @@ contains
         allocate(body(num_body))
         body(1) = body_t(BODY_TYPE_CLOSED, pts)
         !body(1) % vel = vector_t(0.0_wp, 0.0_wp)
-        sim % ibsol  = ibsol_t(body)
+        sim % ibsol  = ibsol_t(body, config % num_x, config % num_y)
 
         block
             real(wp) :: xmin, xmax, ymin, ymax
