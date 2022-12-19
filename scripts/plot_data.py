@@ -33,7 +33,7 @@ if 1:
     #print(ux[:,ind])
 
 if 1:
-    n = 3 
+    n = 2 
     tmp_ux = ux[::n,::n]
     tmp_uy = uy[::n,::n]
     tmp_x = x[::n,::n]

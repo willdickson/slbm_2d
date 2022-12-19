@@ -323,9 +323,8 @@ contains
         integer(ip), intent(inout)      :: iter
         real(wp), intent(inout)         :: time
         iter = iter + 1_ip
-        time = time + (this % config % dt)
+        time = iter * (this % config % dt)
     end subroutine incr_time
-
 
 
     subroutine steady_conv_test(this, max_err)
