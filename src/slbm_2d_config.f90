@@ -145,6 +145,7 @@ contains
         call read_bndry_table(config, table_ptr)
         call read_init_table(config, table_ptr)
         call read_save_table(config, table_ptr)
+        call read_bodies_table(config, table_ptr)
 
         ! Set derivied values
         config % dt = config % ds 
@@ -789,6 +790,12 @@ contains
         end do
 
     end subroutine read_bndry_table
+
+    
+    subroutine read_bodies_table(config, table)
+        type(config_t), target, intent(inout)  :: config
+        type(toml_table), pointer, intent(in)  :: table
+    end subroutine read_bodies_table
 
 
     function stop_cond_from_string(stop_cond_string) result(cstop)
