@@ -38,7 +38,7 @@ if 1:
     tmp_uy = uy[::n,::n]
     tmp_x = x[::n,::n]
     tmp_y = y[::n,::n]
-    ax.quiver(tmp_x,tmp_y,tmp_ux,tmp_uy,scale=20, headwidth=1, headlength=4, minlength=None)
+    ax.quiver(tmp_x,tmp_y,tmp_ux,tmp_uy,scale=20, headwidth=1, headlength=4, minlength=0)
 
 if 0:
     for i in np.arange(20):
