@@ -1,7 +1,7 @@
 [mesh]
 ds = 0.004           # mesh spacing 
-num_x = 251          # number of x grid points
-num_y = 251          # number of y grid points
+len_x = 1.0          # length in x dim
+len_y = 1.0          # length in y dim
 
 [save]
 nstep = 100 

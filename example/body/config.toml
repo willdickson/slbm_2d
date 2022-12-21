@@ -1,0 +1,50 @@
+[mesh]
+ds = 0.010            
+len_x = 6.0
+len_y = 2.0
+
+[save]
+nstep = 100 
+directory = 'data'
+
+[fluid]
+kvisc   = 2.0e-5     
+density = 1.0        
+
+[init]
+type = 'constant'
+velocity.x = 0.1
+velocity.y = 0.0
+
+[bndry.left]
+type = 'inflow'
+value = 0.1
+
+[bndry.right]
+type = 'outflow'
+
+[bndry.top]
+type ='slip'
+
+[bndry.bottom]
+type = 'slip'
+
+[stop]       
+cond  = "time"       
+time  = 500.0         
+
+[[body]]
+name = 'body1'
+motion = 'none'
+
+#[[body]]
+#name = 'body2'
+#motion = 'prescribed-rigid'
+#dt = 0.01
+#
+#[[body]]
+#name = 'body3'
+#motion = 'prescribed_point'
+#dt = 0.02
+
+
